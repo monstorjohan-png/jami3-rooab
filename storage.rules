@@ -1,0 +1,96 @@
+rules_version = '2';
+
+/*
+  قواعد أمان Cloud Storage — مشروع "جامع الروابط" (jami3-rooab)
+  المبدأ العام: المنع أولاً. أي مسار غير مُنصّ عليه يُرفض.
+
+  صلاحية المشرف هنا مطابقة تماماً لـ Firestore: وجود المستند في admins/{uid}
+  عبر firestore.exists(...). لهذا يجب تشغيل محاكي Firestore مع محاكي Storage
+  عند الاختبار، وإلا علّقت العمليات التي تستدعي isAdmin().
+
+  ملاحظتا بناء مُختبَرتان على محاكي Storage:
+  1) المتغيّر path غير متاح داخل قواعد Storage (يُقيَّم بـ Null value error)،
+     فلا يمكن التحقق من الامتداد منه.
+  2) المتغيّر العميق {x=**} ليس نصاً ولا قائمة قابلة للفحص
+     (.matches و .size غير موجودتين عليه)، لذلك نستخدم
+     متغيّرات أحادية مثل {fileName} للتحقق من الامتداد.
+*/
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // المشرف = مستخدم مسجّل يوجد مستنده داخل admins في Firestore
+    function isAdmin() {
+      return request.auth != null
+          && firestore.exists(
+                /databases/(default)/documents/admins/$(request.auth.uid));
+    }
+
+    // صاحب الملف: هو نفسه، أو أي مشرف
+    function isOwner(uid) {
+      return (request.auth != null && request.auth.uid == uid) || isAdmin();
+    }
+
+    // امتداد صورة مسموح (يتحقق من اسم الملف الواحد)
+    function hasImageExtension(name) {
+      return name.matches('.*\\.(png|jpg|jpeg|webp|gif)$');
+    }
+
+    // نوع محتوى صورة + امتداد صحيح
+    function isAllowedImage(name) {
+      return request.resource.contentType.matches('image/.*')
+          && hasImageExtension(name);
+    }
+
+    // سقف الحجم: 3 ميغابايت لكل ملف (منع استغلال المساحة بملفات ضخمة)
+    function isUnderSizeLimit() {
+      return request.resource.size < 3 * 1024 * 1024;
+    }
+
+    // =============== صور المستخدم: صاحبها فقط ===============
+    match /avatars/{uid}/{fileName} {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid)
+                              && isAllowedImage(fileName)
+                              && isUnderSizeLimit();
+      allow delete: if isOwner(uid);
+    }
+
+    // =============== لقطات مرفقة بطلبات الزوار ===============
+    // صاحب الطلب يكتب، والمشرف يقرأ ويراجع ويحذف.
+    match /submissions/{uid}/{fileName} {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid)
+                              && isAllowedImage(fileName)
+                              && isUnderSizeLimit();
+      allow delete: if isOwner(uid);
+    }
+
+    // =============== ملفات الموقع العامة ===============
+    // شعار الموقع وأيقونات الفئات: قراءة مفتوحة للجميع بأي عمق.
+    // الكتابة مسموحة فقط في الكتلتين أدناه (للمشرف، وبامتداد صورة).
+    match /public/{allPaths=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /public/{fileName} {
+      allow create, update: if isAdmin()
+                              && isAllowedImage(fileName)
+                              && isUnderSizeLimit();
+      allow delete: if isAdmin();
+    }
+
+    match /public/{folder}/{fileName} {
+      allow create, update: if isAdmin()
+                              && isAllowedImage(fileName)
+                              && isUnderSizeLimit();
+      allow delete: if isAdmin();
+    }
+
+    // =============== الافتراضي: منع كل ما عداه ===============
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

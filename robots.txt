@@ -1,0 +1,21 @@
+# robots.txt — جامع الروابط
+# ملاحظة: استبدل example.com باسم نطاقك الحقيقي بعد النشر،
+# وتأكد أن رابط sitemap مطلق وليس نسبياً (محركات البحث ترفض النسبي).
+
+User-agent: *
+Allow: /
+
+# لوحة التحكم: لا تُفهرس أبداً
+Disallow: /admin.html
+Disallow: /admin
+Disallow: /*?q=
+Disallow: /*&q=
+Disallow: /*?cat=
+
+# ملفات داخلية
+Disallow: /firestore.rules
+Disallow: /storage.rules
+Disallow: /firebase.json
+Disallow: /tools/
+
+Sitemap: https://example.com/sitemap.xml

@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>لوحة التحكم — جامع الروابط</title>
+<meta name="robots" content="noindex, nofollow" />
+<meta name="theme-color" content="#0a192f" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23f1c40f'/%3E%3Ctext x='50' y='70' font-size='50' text-anchor='middle' fill='%230a192f' font-family='sans-serif' font-weight='bold'%3E%E2%9A%99%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;500;700;900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/css/style.css" />
+<style>
+  .admin-shell { max-width: 1180px; margin: 0 auto; padding: 1.5rem; }
+  .admin-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+  .admin-head h1 { font-size: 1.6rem; font-weight: 900; }
+  .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+  .stat-box { background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; text-align: center; }
+  .stat-box b { display: block; font-size: 1.8rem; font-weight: 900; color: var(--accent); }
+  .stat-box span { font-size: .82rem; color: var(--muted); }
+  .badge-pending { background: color-mix(in srgb, var(--gold) 16%, transparent); color: var(--gold); border: 1px solid var(--gold); padding: .12rem .5rem; border-radius: 999px; font-size: .72rem; font-weight: 800; }
+  .badge-ok { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); border: 1px solid var(--accent); padding: .12rem .5rem; border-radius: 999px; font-size: .72rem; font-weight: 800; }
+  .badge-no { background: color-mix(in srgb, var(--danger) 16%, transparent); color: var(--danger); border: 1px solid var(--danger); padding: .12rem .5rem; border-radius: 999px; font-size: .72rem; font-weight: 800; }
+  .lock-box { text-align: center; padding: 3rem 1.5rem; background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius); max-width: 460px; margin: 3rem auto; }
+</style>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js" defer></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js" defer></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js" defer></script>
+</head>
+<body>
+<header class="site-header" style="padding:2.5rem 1.5rem 2rem">
+  <h1 style="font-size:1.8rem">⚙️ لوحة تحكم جامع الروابط</h1>
+  <p class="header-tagline">أضف وعدّل واحذف المواقع — التحديث اليدوي للمحتوى</p>
+</header>
+
+<div class="admin-shell">
+  <div class="lock-box" id="lockBox">
+    <div style="font-size:3rem;margin-bottom:.5rem">🔐</div>
+    <h2 style="font-size:1.2rem;margin-bottom:.5rem">هذه الصفحة للمشرفين فقط</h2>
+    <p style="color:var(--muted);font-size:.9rem;margin-bottom:1.25rem">سجّل الدخول بحساب جوجل المصرّح له</p>
+    <button class="google-btn" id="lockLogin">
+      <svg viewBox="0 0 48 48" width="20" height="20" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2.5 24 .5 14.6.5 6.5 5.9 2.6 13.7l7.8 6.1C12.3 13.3 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.2-.4-4.7H24v9h12.6c-.5 2.6-2.1 4.9-4.4 6.4l6.7 6.7c3.9-3.6 6.6-9 6.6-17.4z"/><path fill="#FBBC05" d="M10.4 28.2c-.5-1.4-.8-2.9-.8-4.4s.3-3 .8-4.4l-7.8-6.1C.9 16.2 0 19.9 0 23.8s.9 7.6 2.6 10.5l7.8-6.1z"/><path fill="#34A853" d="M24 47.5c6.2 0 11.5-2 15.3-5.5l-6.7-6.7c-1.8 1.2-4.2 2-7.6 2-5.9 0-10.9-3.9-12.7-9.3l-7.8 6.1C10.3 42.9 17.2 47.5 24 47.5z"/></svg>
+      الدخول بحساب جوجل
+    </button>
+    <div id="lockMsg" style="margin-top:1rem"></div>
+  </div>
+
+  <div id="adminArea" style="display:none">
+    <div class="admin-head">
+      <div>
+        <h1 id="welcome">مرحباً</h1>
+        <p style="color:var(--muted);font-size:.88rem" id="adminEmail"></p>
+      </div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" id="exportBtn">📊 تصدير المستخدمين (CSV)</button>
+        <button class="btn btn-ghost btn-sm" id="logoutBtn">تسجيل الخروج</button>
+        <a class="btn btn-ghost btn-sm" href="index.html">← الموقع</a>
+      </div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-box"><b id="sTotal">0</b><span>إجمالي الروابط</span></div>
+      <div class="stat-box"><b id="sPending">0</b><span>بانتظار المراجعة</span></div>
+      <div class="stat-box"><b id="sApproved">0</b><span>معتمدة</span></div>
+      <div class="stat-box"><b id="sUsers">0</b><span>المستخدمون</span></div>
+    </div>
+
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-tab="pending">طلبات الزوار</button>
+      <button class="tab" data-tab="add">إضافة رابط</button>
+      <button class="tab" data-tab="manage">إدارة الروابط</button>
+      <button class="tab" data-tab="users">المستخدمون</button>
+    </div>
+
+    <section id="tab-pending" class="tabpane">
+      <div id="pendingList"></div>
+    </section>
+
+    <section id="tab-add" class="tabpane" style="display:none">
+      <div class="panel" style="margin-top:0">
+        <h2 class="panel-title">➕ إضافة رابط جديد</h2>
+        <div class="form-row two">
+          <div><label class="field-label" for="aTitle">اسم الموقع</label>
+            <input class="input" id="aTitle" maxlength="120" /></div>
+          <div><label class="field-label" for="aUrl">الرابط</label>
+            <input class="input" id="aUrl" type="url" dir="ltr" placeholder="https://" /></div>
+        </div>
+        <div class="form-row two" style="margin-top:.75rem">
+          <div><label class="field-label" for="aCat">القسم</label>
+            <select class="select" id="aCat"></select></div>
+          <div><label class="field-label" for="aLang">اللغة</label>
+            <select class="select" id="aLang"><option value="ar">عربي</option><option value="en">English</option></select></div>
+        </div>
+        <div style="margin-top:.75rem"><label class="field-label" for="aDesc">الوصف</label>
+          <textarea class="textarea" id="aDesc" maxlength="400"></textarea></div>
+        <div class="form-row two" style="margin-top:.75rem">
+          <div><label class="field-label" for="aTier">النوع</label>
+            <select class="select" id="aTier"><option value="free">مجاني</option><option value="paid">مدفوع</option></select></div>
+          <div><label class="field-label" for="aVotes">عدد الأصوات (ترتيب)</label>
+            <input class="input" id="aVotes" type="number" value="100" min="0" /></div>
+        </div>
+        <button class="btn btn-primary btn-block" style="margin-top:1rem" id="addBtn">حفظ ونشر</button>
+        <div id="addMsg" style="margin-top:.75rem"></div>
+      </div>
+    </section>
+
+    <section id="tab-manage" class="tabpane" style="display:none">
+      <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap">
+        <input class="input" id="manageSearch" placeholder="ابحث في الروابط…" style="max-width:320px" />
+        <select class="select" id="manageFilter" style="max-width:220px"></select>
+      </div>
+      <div class="table-wrap" id="manageTable"></div>
+    </section>
+
+    <section id="tab-users" class="tabpane" style="display:none">
+      <div class="table-wrap" id="usersTable"></div>
+    </section>
+  </div>
+</div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/data-layer.js"></script>
+<script>
+(function () {
+  "use strict";
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+  let currentUser = null;
+  let linksCache = [];
+
+  const localSubs = () => { try { return JSON.parse(localStorage.getItem("jr_submissions_local") || "[]"); } catch (e) { return []; } };
+  const saveLocalSubs = (l) => { try { localStorage.setItem("jr_submissions_local", JSON.stringify(l)); } catch (e) {} };
+
+  function fillSelects() {
+    $("#aCat").innerHTML = CATEGORIES.map(c => '<option value="' + c.id + '">' + esc(c.label) + "</option>").join("");
+    $("#manageFilter").innerHTML = '<option value="all">كل الأقسام</option>' + CATEGORIES.map(c => '<option value="' + c.id + '">' + esc(c.label) + "</option>").join("");
+  }
+
+  function bindTabs() {
+    document.querySelectorAll(".tab").forEach(t => {
+      t.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+        document.querySelectorAll(".tabpane").forEach(x => x.style.display = "none");
+        t.classList.add("active");
+        $("#tab-" + t.dataset.tab).style.display = "block";
+      });
+    });
+  }
+
+  function renderPending() {
+    const subs = localSubs();
+    const box = $("#pendingList");
+    if (!subs.length) { box.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>لا توجد طلبات جديدة.</p></div>'; updateStats(); return; }
+    box.innerHTML = '<div class="table-wrap"><table><thead><tr><th>الاسم</th><th>الرابط</th><th>القسم</th><th>الوصف</th><th>الإجراء</th></tr></thead><tbody>' +
+      subs.map((s, i) =>
+        '<tr><td><b>' + esc(s.title) + "</b></td>" +
+        '<td><a href="' + esc(s.url) + '" target="_blank" rel="noopener noreferrer" dir="ltr">' + esc(s.url.slice(0, 42)) + "</a></td>" +
+        "<td>" + esc(s.cat || "—") + "</td>" +
+        '<td style="max-width:220px">' + esc((s.desc || "").slice(0, 70)) + "</td>" +
+        '<td><div class="row-actions">' +
+          '<button class="btn btn-ghost btn-sm" data-approve="' + i + '">اعتماد</button>' +
+          '<button class="btn btn-danger btn-sm" data-reject="' + i + '">رفض</button>' +
+        "</div></td></tr>").join("") + "</tbody></table></div>";
+
+    box.querySelectorAll("[data-approve]").forEach(b => b.addEventListener("click", () => approve(+b.dataset.approve)));
+    box.querySelectorAll("[data-reject]").forEach(b => b.addEventListener("click", () => {
+      const arr = localSubs(); arr.splice(+b.dataset.reject, 1); saveLocalSubs(arr);
+      renderPending();
+    }));
+  }
+
+  function approve(index) {
+    const arr = localSubs();
+    const s = arr[index];
+    if (!s) return;
+    const link = {
+      title: s.title, url: s.url, desc: s.desc,
+      cats: [s.cat || CATEGORIES[0].id], lang: /[؀-ۿ]/.test(s.title + s.desc) ? "ar" : "en",
+      tier: "free", votes: 50, safe: true, status: "approved", isNew: true, addedAt: Date.now()
+    };
+    if (Data.db) {
+      Data.db.collection("links").add(link).then(() => {
+        arr.splice(index, 1); saveLocalSubs(arr);
+        renderPending(); renderManage(); updateStats();
+        window.JRApp ? null : null;
+        toast("تم النشر بنجاح", "ok");
+      }).catch(e => toast("فشل النشر: " + e.message, "err"));
+    } else {
+      const cur = JSON.parse(localStorage.getItem("jr_public_links") || '{"at":0,"links":[]}');
+      cur.links = (cur.links || []).concat([link]);
+      cur.at = Date.now();
+      localStorage.setItem("jr_public_links", JSON.stringify(cur));
+      arr.splice(index, 1); saveLocalSubs(arr);
+      renderPending(); updateStats();
+      toast("تم الاعتماد محلياً (اربط Firebase للنشر للعامة)", "warn");
+    }
+  }
+
+  function renderManage() {
+    const q = ($("#manageSearch").value || "").toLowerCase();
+    const f = $("#manageFilter").value;
+    let list = linksCache.slice();
+    if (f !== "all") list = list.filter(l => (l.cats || []).includes(f));
+    if (q) list = list.filter(l => (l.title || "").toLowerCase().includes(q) || (l.url || "").toLowerCase().includes(q));
+
+    const box = $("#manageTable");
+    if (!list.length) { box.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--muted)">لا نتائج.</div>'; return; }
+    box.innerHTML = '<table><thead><tr><th>الاسم</th><th>الرابط</th><th>القسم</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>' +
+      list.slice(0, 200).map(l => {
+        const id = String(l.id);
+        const st = l.status === "approved" ? '<span class="badge-ok">معتمد</span>' : l.status === "pending" ? '<span class="badge-pending">معلق</span>' : '<span class="badge-no">مرفوض</span>';
+        return "<tr><td><b>" + esc(l.title) + "</b></td>" +
+          '<td><a href="' + esc(l.url) + '" target="_blank" rel="noopener noreferrer" dir="ltr">' + esc(String(l.url).slice(0, 36)) + "</a></td>" +
+          "<td>" + esc((l.cats || [])[0] || "—") + "</td><td>" + (l.status ? st : '<span class="badge-ok">مدمج</span>') + "</td>" +
+          '<td><div class="row-actions"><button class="btn btn-danger btn-sm" data-del="' + esc(id) + '">حذف</button></div></td></tr>';
+      }).join("") + "</tbody></table>";
+
+    box.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => {
+      const id = b.dataset.del;
+      if (id.indexOf("f_") === 0) {
+        if (Data.db) Data.db.collection("links").doc(id.slice(2)).delete().then(() => { loadLinks(); toast("تم الحذف", "ok"); });
+        else toast("يلزم Firebase للحذف السحابي", "warn");
+      } else {
+        const idx = LINKS.findIndex(x => String(x.id) === id);
+        if (idx >= 0) { LINKS.splice(idx, 1); toast("تم الحذف من الذاكرة — أعد تحميل البيانات للتثبيت", "warn"); }
+      }
+      loadLinks();
+    }));
+  }
+
+  function renderUsers() {
+    const box = $("#usersTable");
+    if (!Data.db) { box.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--muted)">يتطلب Firebase لعرض المستخدمين.</div>'; return; }
+    Data.db.collection("users").limit(200).get().then(snap => {
+      const users = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+      $("#sUsers").textContent = users.length;
+      if (!users.length) { box.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--muted)">لا مستخدمين بعد.</div>'; return; }
+      box.innerHTML = '<table><thead><tr><th>الاسم</th><th>البريد</th><th>الدخول</th><th>الدور</th></tr></thead><tbody>' +
+        users.map(u => "<tr><td>" + esc(u.displayName || "—") + "</td><td dir='ltr' style='text-align:right'>" + esc(u.email || "—") + "</td><td>" +
+          (u.lastLoginAt ? new Date(u.lastLoginAt.toDate ? u.lastLoginAt.toDate() : u.lastLoginAt).toLocaleDateString("ar-EG") : "—") +
+          "</td><td>" + (u.role === "admin" ? "مشرف" : "مستخدم") + "</td></tr>").join("") + "</tbody></table>";
+      window.__users = users;
+    }).catch(e => { box.innerHTML = '<div style="padding:2rem;color:var(--danger)">خطأ: ' + esc(e.message) + "</div>"; });
+  }
+
+  function updateStats() {
+    $("#sTotal").textContent = LINKS.length + linksCache.length;
+    $("#sPending").textContent = localSubs().length;
+  }
+
+  function loadLinks() {
+    linksCache = [];
+    if (Data.db) {
+      Data.db.collection("links").limit(500).get().then(snap => {
+        linksCache = snap.docs.map(d => Object.assign({ id: "f_" + d.id }, d.data()));
+        renderManage(); updateStats();
+      }).catch(() => renderManage());
+    } else renderManage();
+  }
+
+  function bindAdd() {
+    $("#addBtn").addEventListener("click", () => {
+      const title = $("#aTitle").value.trim();
+      const url = $("#aUrl").value.trim();
+      const desc = $("#aDesc").value.trim();
+      const check = window.JRApp ? window.JRApp.checkUrlSafety(url) : { ok: url.startsWith("https://"), reason: "رابط غير صالح" };
+      const msg = $("#addMsg");
+      if (title.length < 2) { msg.innerHTML = '<div class="security-note danger">اسم غير صالح.</div>'; return; }
+      if (!check.ok) { msg.innerHTML = '<div class="security-note danger">⛔ ' + esc(check.reason) + "</div>"; return; }
+      if (desc.length < 10) { msg.innerHTML = '<div class="security-note danger">الوصف قصير.</div>'; return; }
+
+      const link = {
+        title, url, desc, cats: [$("#aCat").value], lang: $("#aLang").value,
+        tier: $("#aTier").value, votes: +$("#aVotes").value || 0,
+        safe: true, status: "approved", addedAt: Date.now()
+      };
+      if (Data.db) {
+        Data.db.collection("links").add(link).then(() => {
+          msg.innerHTML = '<div class="security-note">✅ نُشر الرابط. سيظهر للزوار بعد التحديث.</div>';
+          $("#aTitle").value = ""; $("#aUrl").value = ""; $("#aDesc").value = "";
+          loadLinks();
+        }).catch(e => msg.innerHTML = '<div class="security-note danger">خطأ: ' + esc(e.message) + "</div>");
+      } else {
+        const cur = JSON.parse(localStorage.getItem("jr_public_links") || '{"at":0,"links":[]}');
+        cur.links = (cur.links || []).concat([link]); cur.at = Date.now();
+        localStorage.setItem("jr_public_links", JSON.stringify(cur));
+        msg.innerHTML = '<div class="security-note">✅ حُفظ محلياً. اربط Firebase للنشر لجميع الزوار.</div>';
+        loadLinks();
+      }
+    });
+  }
+
+  function bindSearch() {
+    $("#manageSearch").addEventListener("input", renderManage);
+    $("#manageFilter").addEventListener("change", renderManage);
+  }
+
+  function gate(user) {
+    currentUser = user;
+    if (user && Data.isAdmin(user)) {
+      $("#lockBox").style.display = "none";
+      $("#adminArea").style.display = "block";
+      $("#welcome").textContent = "أهلاً " + (user.displayName || "مشرف");
+      $("#adminEmail").textContent = user.email || "";
+      renderPending(); loadLinks(); renderUsers(); updateStats();
+    } else {
+      $("#lockBox").style.display = "block";
+      $("#adminArea").style.display = "none";
+      if (user) $("#lockMsg").innerHTML = '<div class="security-note danger">هذا الحساب ليس مشرفاً. أضف الـ UID في config.js.</div>';
+    }
+  }
+
+  function boot() {
+    fillSelects(); bindTabs(); bindAdd(); bindSearch();
+
+    $("#lockLogin").addEventListener("click", () => Data.loginGoogle($("#lockMsg")));
+    $("#logoutBtn").addEventListener("click", () => Data.logout().then(() => location.reload()));
+    $("#exportBtn").addEventListener("click", () => {
+      const users = window.__users || [];
+      if (!users.length) { alert("لا توجد بيانات. اربط Firebase أولاً."); return; }
+      Data.exportUsersToCSV(users, "jam3-users.csv");
+    });
+
+    Data.onAuthChanged(gate);
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
+})();
+</script>
+</body>
+</html>

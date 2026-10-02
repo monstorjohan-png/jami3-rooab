@@ -1,0 +1,307 @@
+rules_version = '2';
+
+/*
+  قواعد أمان Firestore — مشروع "جامع الروابط" (jami3-rooab)
+  المبدأ العام: المنع أولاً. أي مسار أو حقل غير مُنصّ عليه صراحةً يُرفض.
+  مصدر صلاحية المشرف: وجود مستند داخل admins/{uid} فقط.
+  لا يمكن لأي مستخدم ترقية نفسه إلى مشرف من العميل — منح هذا الدور يتم
+  يدوياً من Firebase Console أو عبر Admin SDK (كود خادم موثوق).
+
+  ملاحظتا بناء مهمتان (كلتاهما مُختبَرة على محاكي Firestore):
+  1) قواعد Firestore تُغلَّف إلزامياً داخل
+     service cloud.firestore > match /databases/{database}/documents،
+     وصيغة match على المستوى الأعلى لا تُترجم إطلاقاً.
+  2) التوابع التي تستخدم $(database) يجب تعريفها داخل كتلة
+     match /databases/{database}/documents نفسها. تعريفها في المستوى الأعلى
+     يُترجم بنجاح لكنه يفشل عند التنفيذ بـ Null value error.
+*/
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ======================= توابع مساعدة =======================
+
+    // كل كتابة تتطلب مستخدماً مسجّلاً (تسجيل دخول Google)
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // المشرف = مستخدم يوجد مستنده داخل admins (الوجود هو التعريف)
+    function isAdmin() {
+      return signedIn()
+          && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // داخل admins: self-only — لا يرى ولا يعدّل إلا مستنده هو
+    function isAdminSelf(uid) {
+      return signedIn()
+          && uid == request.auth.uid
+          && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // نص اختياري: غائب أو فارغ أو لا يتجاوز الطول المسموح (حماية من الإساءة)
+    // نستخدم d.get(k, null) وليس d[k]، لأن الوصول المباشر إلى حقل غائب
+    // يُنتج خطأ تقييماً (Property ... is undefined) بدل أن يعيد null.
+    function optionalStr(d, k, max) {
+      return d.get(k, null) == null
+          || (d.get(k, null) is string && d.get(k, null).size() <= max);
+    }
+
+    // نص مطلوب ضمن حد أدنى وأقصى
+    function reqStr(d, k, min, max) {
+      return d.get(k, null) is string
+          && d.get(k, null).size() >= min
+          && d.get(k, null).size() <= max;
+    }
+
+    // رابط اختياري: فارغ أو رابط HTTPS صالح
+    function optionalUrl(d, k) {
+      return d.get(k, null) == null
+          || d.get(k, null) == ''
+          || isValidUrl(d.get(k, null));
+    }
+
+    // عدد صحيح غير سالب
+    function optionalInt(d, k) {
+      return d.get(k, null) == null
+          || (d.get(k, null) is int && d.get(k, null) >= 0);
+    }
+
+    // طابع زمني اختياري
+    function optionalTime(d, k) {
+      return d.get(k, null) == null || d.get(k, null) is timestamp;
+    }
+
+    // قائمة اختيارية بسقف عدد عناصر (تعذّر التحقق من نوع كل عنصر داخل القواعد)
+    function optionalList(d, k, maxItems) {
+      return d.get(k, null) == null
+          || (d.get(k, null) is list && d.get(k, null).size() <= maxItems);
+    }
+
+    // صيغة الرابط: HTTPS إلزامي + طول معقول + بلا مسافات + بلا بيانات دخول مخفية
+    function isValidUrl(u) {
+      return u is string
+          && u.matches('https://.*')       // يمنع javascript: و data: و file:
+          && u.size() >= 12                // أقصر صيغة مقبولة: https://a.b
+          && u.size() <= 2000              // سقف الطول يمنع تخزين بيانات ضخمة
+          && !u.matches('.*\\s.*')         // لا محارف بيضاء (مسافات/أسطر جديدة)
+          && !u.matches('https://[^/]+@'); // يمنع خدعة https://site.com@evil.com
+    }
+
+    // الحقول المسموح بها في مستند رابط أو طلب إرسال، مع حدود الطول
+    function isValidLinkDoc(d) {
+      return d.keys().hasOnly([
+              'title', 'url', 'desc', 'category', 'badges', 'status',
+              'submittedBy', 'submittedByEmail', 'submittedAt',
+              'reviewedBy', 'reviewedAt', 'votes', 'clicks'
+            ])
+          && reqStr(d, 'title', 2, 150)
+          && isValidUrl(d.url)
+          && optionalStr(d, 'desc', 600)
+          && optionalStr(d, 'category', 64)
+          && optionalList(d, 'badges', 8)
+          && reqStr(d, 'status', 3, 10)
+          && d.status in ['pending', 'approved', 'rejected']
+          && optionalStr(d, 'submittedBy', 128)
+          && optionalStr(d, 'submittedByEmail', 254)
+          && optionalTime(d, 'submittedAt')
+          && optionalStr(d, 'reviewedBy', 128)
+          && optionalTime(d, 'reviewedAt')
+          && optionalInt(d, 'votes')
+          && optionalInt(d, 'clicks');
+    }
+
+    // مستند المستخدم: حقول محدودة ودور من قيمتين معرفتين فقط
+    function isValidUserDoc(d) {
+      return d.keys().hasOnly([
+              'email', 'displayName', 'photoURL', 'role', 'createdAt', 'lastLoginAt'
+            ])
+          && reqStr(d, 'email', 4, 254)
+          && reqStr(d, 'role', 3, 10)
+          && d.role in ['user', 'admin']
+          && optionalStr(d, 'displayName', 120)
+          && optionalUrl(d, 'photoURL')
+          && optionalTime(d, 'createdAt')
+          && optionalTime(d, 'lastLoginAt');
+    }
+
+    // مستند المشرف: وجوده فقط هو ما يمنح الصلاحية، ومحتواه لا يُحرَّف بحرية
+    function isValidAdminDoc(d) {
+      return d.keys().hasOnly(['email', 'role'])
+          && reqStr(d, 'email', 4, 254)
+          && d.role == 'admin';
+    }
+
+    // إعدادات الموقع العامة
+    function isValidSettings(d) {
+      return d.keys().hasOnly([
+              'siteName', 'telegramUrl', 'whatsappUrl', 'payNumber', 'donationGoal'
+            ])
+          && reqStr(d, 'siteName', 2, 100)
+          && optionalUrl(d, 'telegramUrl')
+          && optionalUrl(d, 'whatsappUrl')
+          && optionalStr(d, 'payNumber', 40)
+          && optionalInt(d, 'donationGoal');
+    }
+
+    // نشرة البريد: معرّف المستند هو البريد نفسه، ولا تتقبل حقن حقل خفي
+    function isValidNewsletter(d, emailId) {
+      return d.keys().hasOnly(['email', 'subscribedAt', 'source'])
+          && d.email == emailId
+          && reqStr(d, 'email', 5, 254)
+          && d.email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$')
+          && reqStr(d, 'source', 1, 64);
+    }
+
+    // الحقول التي يجوز لمشرف تعديلها فقط.
+    // دالة تُعيد قيمة منطقية (القواعد لا تسمح للدالة بإرجاع قائمة)،
+    // وتستثني دائماً votes و clicks عبر affectedKeys().hasOnly([...]).
+    function changedOnlyReviewFields(oldData, newData) {
+      return newData.diff(oldData)
+          .affectedKeys()
+          .hasOnly(['title', 'url', 'desc', 'category', 'badges', 'status',
+                    'reviewedBy', 'reviewedAt']);
+    }
+
+    // ======================= links =======================
+    match /links/{linkId} {
+
+      // القراءة العامة: الروابط المعتمدة فقط.
+      // ملاحظة: الاستعلام يجب أن يفلتر صراحةً بـ where('status','==','approved')
+      // لأن القواعد تقيّم كل مستند على حدة، فاستعلام غير مفلتر يُرفض.
+      allow read: if resource.data.status == 'approved';
+
+      // الإنشاء: المشرف فقط، وبتقييم كامل للحقول.
+      // votes و clicks يُسمح بهما فقط بقيمة 0 عند الإنشاء — أي زيادة تُرفض،
+      // لأن العدّادات تُحسب في الخادم (Cloud Functions / Admin SDK) لا من العميل.
+      allow create: if isAdmin()
+                     && isValidLinkDoc(request.resource.data)
+                     && linkId.size() >= 5 && linkId.size() <= 128
+                     && (request.resource.data.get('votes', null) == null
+                         || request.resource.data.get('votes', null) == 0)
+                     && (request.resource.data.get('clicks', null) == null
+                         || request.resource.data.get('clicks', null) == 0);
+
+      // التعديل: المشرف فقط، و votes/clicks ممنوع ذكرهما في الحقول المتأثرة
+      // (affectedKeys().hasOnly) — لا يمكن رفع الأصوات أو النقرات من أي عميل.
+      allow update: if isAdmin()
+                     && isValidLinkDoc(request.resource.data)
+                     && changedOnlyReviewFields(resource.data,
+                                                request.resource.data);
+
+      allow delete: if isAdmin();
+    }
+
+    // ======================= submissions =======================
+    match /submissions/{subId} {
+
+      // الزائر المسجّل ينشئ طلباً جديداً فقط:
+      //  - status يُفرض داخل القاعدة = 'pending' (يُرفض أي محاولة حقن 'approved')
+      //  - submittedBy يُفرض = معرّف صاحب الجلسة (لا انتحال هوية)
+      //  - submittedByEmail يُطابق بريد الجلسة من الرمز (لا انتحال بريد)
+      //  - submittedAt يُفرض = وقت الخادم (لا تزوير تاريخ)
+      //  - حقول المراجعة والعدّادات يجب أن تكون غائبة
+      allow create: if signedIn()
+                     && isValidLinkDoc(request.resource.data)
+                     && subId.size() >= 5 && subId.size() <= 128
+                     && request.resource.data.status == 'pending'
+                     && request.resource.data.submittedBy == request.auth.uid
+                     && request.resource.data.submittedByEmail == request.auth.token.email
+                     && request.resource.data.submittedAt == request.time
+                     && request.resource.data.get('reviewedBy', null) == null
+                     && request.resource.data.get('reviewedAt', null) == null
+                     && request.resource.data.get('votes', null) == null
+                     && request.resource.data.get('clicks', null) == null;
+
+      // لا قراءة عامة إطلاقاً: صاحب الطلب يرى طلبه فقط، والمشرف يرى الكل
+      allow read: if isAdmin()
+                  || (signedIn() && resource.data.submittedBy == request.auth.uid);
+
+      // المراجعة/التعديل/الحذف من لوحة المشرف فقط (حقول المراجعة دون العدّادات)
+      allow update: if isAdmin()
+                     && isValidLinkDoc(request.resource.data)
+                     && changedOnlyReviewFields(resource.data,
+                                                request.resource.data);
+
+      allow delete: if isAdmin();
+    }
+
+    // ======================= users =======================
+    match /users/{uid} {
+
+      // المستخدم يقرأ مستنده فقط، والمشرف يقرأ الكل
+      allow read: if signedIn() && (uid == request.auth.uid || isAdmin());
+
+      // الإنشاء: لنفسه فقط، والدور 'user' فقط ما لم يكن مشرفاً أصلاً.
+      // هذا يمنع ترقية الذات بحقل role = 'admin'.
+      allow create: if signedIn()
+                     && uid == request.auth.uid
+                     && isValidUserDoc(request.resource.data)
+                     && (request.resource.data.role == 'user' || isAdmin());
+
+      // التعديل: حقول العرض فقط.
+      // - حقل role ممنوع من التعديل (يُشترط بقاؤه كما هو)
+      // - affectedKeys().hasOnly يمنع إضافة أي حقل جديد أو تعديل email/createdAt
+      allow update: if signedIn()
+                     && uid == request.auth.uid
+                     && isValidUserDoc(request.resource.data)
+                     && request.resource.data.role == resource.data.role
+                     && request.resource.data.diff(resource.data)
+                            .affectedKeys().hasOnly(['displayName', 'photoURL',
+                                                      'lastLoginAt']);
+
+      // حذف الحساب من لوحة المشرف فقط (سجل Users في Auth هو مصدر الحقيقة)
+      allow delete: if isAdmin();
+    }
+
+    // ======================= admins =======================
+    match /admins/{uid} {
+
+      // self-only: لا أحد يقرأ أو يعدّل مستند مشرف غير مستنده.
+      // ولأن isAdminSelf يتطلب وجود المستند مسبقاً، فإن الإنشاء غير ممكن إطلاقاً
+      // — وهذا هو الحاجز ضد تصعيد الصلاحيات من جهة العميل.
+      allow read: if isAdminSelf(uid);
+      allow write: if isAdminSelf(uid) && isValidAdminDoc(request.resource.data);
+    }
+
+    // ======================= settings/global =======================
+    match /settings/global {
+
+      // إعدادات عامة تُعرض في الترويسة والتبرع: قراءة مفتوحة للجميع
+      allow read: if true;
+
+      // التعديل من لوحة المشرف فقط، مع تقييم كل حقل
+      allow write: if isAdmin() && isValidSettings(request.resource.data);
+    }
+
+    // ======================= stats =======================
+    match /stats/{docId} {
+
+      // إحصاءات داخلية للمشرف فقط
+      allow read: if isAdmin();
+
+      // ممنوعة من كل العملاء: العدّادات (views/clicks) تُحدَّث في الخادم فقط،
+      // لأن Cloud Functions و Admin SDK يتجاوزان هذه القواعد بحكم التصميم.
+      allow write: if false;
+    }
+
+    // ======================= newsletter =======================
+    match /newsletter/{email} {
+
+      // الاشتراك: مستخدم مسجّل فقط (سياسة المشروع: كل كتابة تتطلب تسجيل دخول).
+      // معرّف المستند هو البريد، ولا يُقبل بريد يخالف عناوين الوثيقة.
+      allow create: if signedIn()
+                     && isValidNewsletter(request.resource.data, email)
+                     && request.resource.data.subscribedAt == request.time;
+
+      // لا قراءة عامة: كشف بريد مشترك تسريبٌ لبيانات شخصية
+      allow read: if isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    // ======================= الافتراضي: منع كل شيء آخر =======================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
