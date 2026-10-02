@@ -105,5 +105,60 @@
 <script src="assets/js/data.js" defer></script>
 <script src="assets/js/data-layer.js" defer></script>
 <script src="assets/js/app.js?v=1.4.0" defer></script>
+<script>
+/* ==========================================================
+   إصلاح ذاتي للكاش — يمنع تجمّد الهاتف على نسخة قديمة
+
+   المشكلة الحقيقية:
+     المتصفح لا يفحص عامل الخدمة إلا مرة كل ٢٤ ساعة كحد أقصى.
+     فإذا ثبّت الهاتف نسخة قديمة، قد تبقى عالقة عليها أيام بلا أي سبب ظاهر.
+     فيظهر للمستخدم «الموقع توقف» وهو يعمل تماماً.
+
+   الحل:
+     نطبع رقم الإصدار على كل تحميل. إن اختلف عن المحفوظ، فالمتصفح
+     ينسخ الكاش ويلغي عامل الخدمة ويعيد التحميل مرة واحدة فقط.
+     المتغيّر في sessionStorage يمنع أي حلقة إعادة تحميل.
+   ========================================================== */
+(function () {
+  var V = "1.4.0";
+  var KEY = "jr_ver";
+  var GUARD = "jr_reset";
+  try {
+    if (sessionStorage.getItem(GUARD)) return;
+
+    var seen = null;
+    try { seen = localStorage.getItem(KEY); } catch (e) {}
+
+    if (seen !== null && seen !== V) {
+      sessionStorage.setItem(GUARD, "1");
+      localStorage.setItem(KEY, V);
+
+      var done = 0;
+      var finish = function () {
+        if (++done < 2) return;
+        location.reload();
+      };
+
+      if (window.caches) {
+        caches.keys().then(function (ks) {
+          return Promise.all(ks.map(function (k) { return caches.delete(k); }));
+        }).then(finish, finish);
+      } else { finish(); }
+
+      if (navigator.serviceWorker) {
+        navigator.serviceWorker.getRegistrations().then(function (rs) {
+          return Promise.all(rs.map(function (r) { return r.unregister(); }));
+        }).catch(function () {});
+      }
+      return;
+    }
+
+    if (seen === null) {
+      try { localStorage.setItem(KEY, V); } catch (e) {}
+    }
+  } catch (e) { /* الوضع الخاص أو القيود — الموقع يعمل بدون هذا */
+  }
+})();
+</script>
 </body>
 </html>
