@@ -124,37 +124,38 @@
   var KEY = "jr_ver";
   var GUARD = "jr_reset";
   try {
-    if (sessionStorage.getItem(GUARD)) return;
-
     var seen = null;
     try { seen = localStorage.getItem(KEY); } catch (e) {}
 
-    if (seen !== null && seen !== V) {
-      sessionStorage.setItem(GUARD, "1");
-      localStorage.setItem(KEY, V);
-
-      var done = 0;
-      var finish = function () {
-        if (++done < 2) return;
-        location.reload();
-      };
-
-      if (window.caches) {
-        caches.keys().then(function (ks) {
-          return Promise.all(ks.map(function (k) { return caches.delete(k); }));
-        }).then(finish, finish);
-      } else { finish(); }
-
-      if (navigator.serviceWorker) {
-        navigator.serviceWorker.getRegistrations().then(function (rs) {
-          return Promise.all(rs.map(function (r) { return r.unregister(); }));
-        }).catch(function () {});
-      }
+    /* الإصدار مطابق أو هذه أول زيارة — لا حاجة لأي إجراء */
+    if (seen === null || seen === V) {
+      if (seen === null) { try { localStorage.setItem(KEY, V); } catch (e) {} }
       return;
     }
 
-    if (seen === null) {
+    /* اختلف الإصدار: نقول «أي إصلاح» مرة واحدة فقط لكل تحميل.
+       نضع العلامة بعد الحسم لا قبله، لأن التحديث قد يُلغى
+       بتحديث الصفحة — والعلامة المبكرة تترك الحالة عالقة للأبد. */
+    if (sessionStorage.getItem(GUARD)) return;
+
+    var clean = function () {
+      try { sessionStorage.removeItem(GUARD); } catch (e) {}
       try { localStorage.setItem(KEY, V); } catch (e) {}
+      location.reload();
+    };
+
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.getRegistrations().then(function (rs) {
+        return Promise.all(rs.map(function (r) { return r.unregister(); }));
+      }).catch(function () {});
+    }
+
+    if (window.caches) {
+      caches.keys().then(function (ks) {
+        return Promise.all(ks.map(function (k) { return caches.delete(k); }));
+      }).then(clean, clean);
+    } else {
+      clean();
     }
   } catch (e) { /* الوضع الخاص أو القيود — الموقع يعمل بدون هذا */
   }
