@@ -2,7 +2,7 @@
    جامع الروابط - sw.js
    Service Worker: كاش + عمل بدون إنترنت
    ========================================== */
-const VERSION = "jr-v1.4.0";
+const VERSION = "jr-v1.4.1";
 const CORE = "core-" + VERSION;
 const RUNTIME = "runtime-" + VERSION;
 
@@ -32,7 +32,9 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys()
       .then((keys) =>
-        Promise.all(keys.filter((k) => k !== CORE && k !== RUNTIME).map((k) => caches.delete(k)))
+        /* نحذف كل كاش لا يخصّ هذه النسخة، بما فيها كاش
+           HTML القديم من RUNTIME — وإلا لبقي قديمة على الهاتف */
+        Promise.all(keys.filter((k) => k !== CORE).map((k) => caches.delete(k)))
       )
       .then(() => self.clients.claim())
   );
@@ -52,16 +54,21 @@ self.addEventListener("fetch", (event) => {
   if (url.hostname.includes("firestore") || url.hostname.includes("firebase") ||
       url.hostname.includes("identitytoolkit") || url.hostname.includes("securetoken")) return;
 
-  // التنقل: الشبكة أولاً ثم الكاش (أحدث نسخة)
+  /* التنقل: الشبكة أولاً ثم الكاش.
+     cache:"reload" مقصود: بدونه يمر الطلب عبر كاش المتصفح
+     (GitHub يرسل max-age=600) فيبقى المستخدم على index.html
+     قديمة حتى لو كان عامل الخدمة قد تحدّث. */
   if (req.mode === "navigate") {
     event.respondWith(
-      fetch(req)
+      fetch(req, { cache: "reload" })
         .then((res) => {
           const copy = res.clone();
           caches.open(RUNTIME).then((c) => c.put(req, copy));
           return res;
         })
-        .catch(() => caches.match(req).then((r) => r || caches.match("./index.html")))
+        .catch(() =>
+          caches.match(req).then((r) => r || caches.match("./index.html"))
+        )
     );
     return;
   }
