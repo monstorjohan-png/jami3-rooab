@@ -28,6 +28,10 @@
   [headers.values]
     Cache-Control = "no-cache"
 
+# تحويلات اختيارية — تعمل على Netlify فقط.
+# GitHub Pages لا يدعم redirects، لكنه يخدم /admin.html مباشرة،
+# وتوجد روابط مباشرة في صفحات الموقع، فلا حاجة لهذه التحويلات هناك.
+
 [[redirects]]
   from = "/home"
   to = "/index.html"

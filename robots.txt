@@ -1,6 +1,6 @@
 # robots.txt — جامع الروابط
-# ملاحظة: استبدل example.com باسم نطاقك الحقيقي بعد النشر،
-# وتأكد أن رابط sitemap مطلق وليس نسبياً (محركات البحث ترفض النسبي).
+# النطاق الحقيقي: https://monstorjohan-png.github.io/jami3-rooab/
+# رابط sitemap يجب أن يكون مطلقاً وليس نسبياً (محركات البحث ترفض النسبي).
 
 User-agent: *
 Allow: /
@@ -18,4 +18,4 @@ Disallow: /storage.rules
 Disallow: /firebase.json
 Disallow: /tools/
 
-Sitemap: https://example.com/sitemap.xml
+Sitemap: https://monstorjohan-png.github.io/jami3-rooab/sitemap.xml
