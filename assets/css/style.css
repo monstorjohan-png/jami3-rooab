@@ -535,6 +535,72 @@ label.field-label { font-size: .85rem; font-weight: 700; color: var(--muted); di
 }
 .donate-progress { height: 8px; background: var(--bg-3); border-radius: 999px; overflow: hidden; margin: 1rem 0; }
 .donate-progress span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--gold)); }
+.donate-copy-row { display: flex; gap: .5rem; justify-content: center; flex-wrap: wrap; }
+.donate-hint { font-size: .85rem; color: var(--muted); margin: .5rem 0 1.25rem; }
+.donate-foot { font-size: .85rem; color: var(--muted); margin-top: 1rem; }
+
+/* ---------- طرق الدفع ---------- */
+.pay-card {
+  text-align: start; margin: 1rem 0; padding: 1rem;
+  background: var(--bg-2); border: 1px solid var(--border-2);
+  border-radius: var(--radius-sm);
+}
+.pay-card-head {
+  display: flex; align-items: center; gap: .55rem;
+  font-size: .95rem; margin-bottom: .5rem;
+}
+.pay-num {
+  width: 1.5rem; height: 1.5rem; flex: 0 0 auto; border-radius: 50%;
+  background: var(--gold); color: #05121a; font-weight: 900; font-size: .82rem;
+  display: grid; place-items: center;
+}
+.pay-desc { font-size: .85rem; color: var(--muted); margin: 0 0 .7rem; }
+.pay-ussd-label { font-size: .78rem; color: var(--muted); font-weight: 700; margin-bottom: .3rem; }
+.pay-ussd {
+  display: block; direction: ltr; text-align: center;
+  background: var(--bg); border: 1px dashed var(--accent);
+  border-radius: var(--radius-sm); padding: .7rem .6rem;
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: clamp(.95rem, 3.4vw, 1.2rem); font-weight: 800; color: var(--accent);
+  word-break: break-all; user-select: all; margin-bottom: .8rem;
+}
+.pay-slot {
+  color: var(--muted); background: color-mix(in srgb, var(--muted) 18%, transparent);
+  border-radius: 5px; padding: 0 .35rem;
+}
+.pay-slot.filled { color: #05121a; background: var(--gold); font-weight: 900; }
+.pay-slot.bad { color: #fff; background: var(--danger); }
+.pay-row { display: flex; align-items: center; gap: .5rem; margin-bottom: .55rem; }
+.pay-row .input { flex: 1; min-width: 0; }
+.pay-cur { font-size: .9rem; font-weight: 800; color: var(--muted); }
+.pay-quick { display: flex; gap: .35rem; flex-wrap: wrap; margin-bottom: .75rem; }
+.pay-chip {
+  padding: .3rem .75rem; border-radius: 999px; font-size: .82rem; font-weight: 800;
+  background: var(--bg); border: 1px solid var(--border-2); color: var(--text);
+  cursor: pointer; transition: all var(--transition);
+}
+.pay-chip:hover { border-color: var(--gold); color: var(--gold); }
+.pay-actions { display: flex; gap: .45rem; flex-wrap: wrap; }
+.pay-actions .btn:disabled { opacity: .45; cursor: not-allowed; }
+.pay-msg { font-size: .84rem; color: var(--accent); margin: .55rem 0 0; min-height: 1.2em; }
+.pay-msg .bad, .pay-msg .bad:empty { color: var(--danger); }
+.pay-steps {
+  margin: .3rem 0 .8rem; padding-inline-start: 1.1rem;
+  font-size: .87rem; color: var(--text); text-align: start;
+}
+.pay-steps li { margin-bottom: .3rem; }
+.pay-steps code, .pay-links code {
+  background: var(--bg); padding: .1rem .35rem; border-radius: 4px;
+  font-family: ui-monospace, Consolas, monospace; direction: ltr;
+  color: var(--accent); font-weight: 800;
+}
+.pay-links { display: flex; gap: .45rem; flex-wrap: wrap; }
+.pay-note {
+  font-size: .8rem; color: var(--muted); text-align: start;
+  background: var(--bg-2); border-right: 3px solid var(--gold);
+  padding: .7rem .85rem; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  margin: 1rem 0;
+}
 
 /* ---------- Social share ---------- */
 .social-row { text-align: center; margin: 2rem auto; display: flex; gap: .5rem; justify-content: center; flex-wrap: wrap; }

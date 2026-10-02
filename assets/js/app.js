@@ -763,6 +763,52 @@
 
       if (t.closest && t.closest("#sSubmit")) { e.preventDefault(); handleSubmit(); return; }
       if (t.closest && t.closest("#donateCopy")) { copyText(APP_CONFIG.donation.phoneCash); return; }
+
+      /* التبرع — أزرار مبالغ سريعة */
+      const amt = t.closest && t.closest("[data-amt]");
+      if (amt) {
+        const inp = $("#payAmount");
+        if (inp) {
+          inp.value = amt.dataset.amt;
+          buildUssd();
+          inp.focus();
+        }
+        return;
+      }
+
+      /* إنشاء الكود */
+      if (t.closest && t.closest("#payBuild")) {
+        e.preventDefault();
+        const code = buildUssd();
+        const msg = $("#payMsg");
+        if (code) {
+          if (msg) msg.innerHTML = "✅ الكود جاهز: انسخه وارقمنه من هاتفك.";
+          const cp = $("#payCopy");
+          if (cp) cp.focus();
+        } else if (msg && !msg.textContent) {
+          msg.innerHTML = '<span class="bad">اكتب المبلغ أولاً.</span>';
+        }
+        return;
+      }
+
+      /* نسخ الكود */
+      if (t.closest && t.closest("#payCopy")) {
+        e.preventDefault();
+        const code = buildUssd();
+        if (!code) return;
+        copyText(code);
+        const b = t.closest("#payCopy");
+        const old = b.textContent;
+        b.textContent = "✅ نُسخ";
+        setTimeout(() => (b.textContent = old), 1800);
+        return;
+      }
+
+      /* الضغط على الرقم نفسه ينسخه */
+      if (t.closest && t.closest("#donateNum")) {
+        copyText(APP_CONFIG.donation.phoneCash);
+        return;
+      }
       if (t.closest && t.closest("#dlGo")) { e.preventDefault(); startDownload(); return; }
       if (t.closest && t.closest("#dlCopy")) {
         e.preventDefault();
@@ -841,6 +887,9 @@
 
     /* كشف المنصة مباشرة أثناء الكتابة */
     document.addEventListener("input", function (e) {
+      /* تحديث كود التبرع فور الكتابة */
+      if (e.target && e.target.id === "payAmount") { buildUssd(); return; }
+
       if (!e.target || e.target.id !== "dlUrl") return;
       const badge = $("#dlDetect");
       if (!badge) return;
@@ -983,21 +1032,111 @@
   /* ---------- تبرع ---------- */
   function renderDonate() {
     const d = APP_CONFIG.donation;
+    const phone = d.phoneCash;
+    /* صيغة USSD الرسمية لتحويل فودافون كاش:
+       ‎*9*7*رقم الموبايل*المبلغ#
+       المصدر الرسمي: web.vodafone.com.eg/ar/money-transfer */
+    const pattern = "*9*7*" + phone + "*";
+
     return (
       '<section class="panel donate-panel" id="donate">' +
         '<h2 class="panel-title">💚 ادعم الموقع</h2>' +
         "<p>الموقع مجاني 100% ولا يعرض أي إعلانات. دعمك هو ما يبقيه يعمل.</p>" +
-        '<div class="donate-number" id="donateNum" title="اضغط للنسخ">' + esc(d.phoneCash) + "</div>" +
-        '<div class="donate-methods">' +
-          '<span class="donate-method">فودافون كاش</span>' +
-          '<span class="donate-method">اسم المحوّل: ' + esc(d.name) + "</span>" +
+
+        /* الرقم */
+        '<div class="donate-number" id="donateNum" title="اضغط لنسخ الرقم">' + esc(phone) + "</div>" +
+        '<div class="donate-copy-row">' +
+          '<button class="btn btn-gold btn-sm" id="donateCopy" type="button">📋 نسخ الرقم</button>' +
+          '<a class="btn btn-ghost btn-sm" id="donateCall" href="tel:' + esc(phone) +
+            '" rel="nofollow">📞 اتصال</a>' +
         "</div>" +
-        '<p style="color:var(--muted);font-size:.9rem">' + esc(d.minimumNote) + "</p>" +
-        '<div class="donate-progress"><span style="width:18%"></span></div>' +
-        '<p style="color:var(--muted);font-size:.8rem">18% منهدف التشغيل الشهري مغطّى حالياً</p>' +
-        '<button class="btn btn-gold" id="donateCopy">نسخ الرقم</button>' +
+        '<p class="donate-hint">رقم فودافون كاش — اسم المحوّل: ' + esc(d.name) + "</p>" +
+
+        /* --- الطريقة الأولى: كود USSD مباشر --- */
+        '<div class="pay-card" id="payCard">' +
+          '<div class="pay-card-head"><span class="pay-num">١</span><b>الأسرع — كود مباشر من هاتفك</b></div>' +
+          '<p class="pay-desc">اكتب المبلغ الذي تريد التبرع به، ثم انسخ الكود وارقمنه من هاتفك.</p>' +
+          '<div class="pay-ussd-label">الكود الذي ستُرسله:</div>' +
+          '<code class="pay-ussd" id="payUssd">' + esc(pattern) + '<span class="pay-slot" id="paySlot">المبلغ</span>#</code>' +
+          '<div class="pay-row">' +
+            '<input class="input" id="payAmount" type="number" inputmode="numeric" ' +
+              'min="1" max="100000" step="1" placeholder="اكتب المبلغ بالجنيه" aria-label="مبلغ التبرع" />' +
+            '<span class="pay-cur">جنيه</span>' +
+          "</div>" +
+          '<div class="pay-quick" id="payQuick">' +
+            [10, 20, 50, 100, 200].map((v) =>
+              '<button class="pay-chip" data-amt="' + v + '" type="button">' + v + "</button>"
+            ).join("") +
+          "</div>" +
+          '<div class="pay-actions">' +
+            '<button class="btn btn-primary" id="payBuild" type="button">إنشاء الكود</button>' +
+            '<button class="btn btn-gold" id="payCopy" type="button" disabled>📋 نسخ الكود</button>' +
+          "</div>" +
+          '<p class="pay-msg" id="payMsg" aria-live="polite"></p>' +
+        "</div>" +
+
+        /* --- الطريقة الثانية: تطبيق أو موقع فودافون --- */
+        '<div class="pay-card">' +
+          '<div class="pay-card-head"><span class="pay-num">٢</span><b>عبر تطبيق فودافون كاش أو الموقع</b></div>' +
+          '<ol class="pay-steps">' +
+            "<li>افتح تطبيق Vodafone Cash على هاتفك (أو موقع فودافون الإلكتروني).</li>" +
+            "<li>اختر <b>تحويل الأموال</b> ثم <b>تحويل فودافون كاش</b>.</li>" +
+            "<li>اكتب الرقم: <code>" + esc(phone) + "</code></li>" +
+            "<li>اكتب المبلغ وأكّد العملية برمز سرّ محفظتك.</li>" +
+          "</ol>" +
+          '<div class="pay-links">' +
+            '<a class="btn btn-ghost btn-sm" href="https://web.vodafone.com.eg/ar/money-transfer" ' +
+              'target="_blank" rel="noopener noreferrer nofollow">الموقع الرسمي لفودافون ↗</a>' +
+          "</div>" +
+        "</div>" +
+
+        /* --- إخلاء المسؤولية --- */
+        '<div class="pay-note">' +
+          "⚠️ الموقع لا يستقبل أموالاً ولا يعالج دفعات — أنتحوّل المبلغ مباشرة من محفظتك " +
+          "إلى الرقم أعلاه، بلا مرور بأي وسيط. تأكّد من الرقم قبل التأكيد. " +
+          "رسوم التحويل تخص فودافون، وليست جزءاً من المبلغ." +
+        "</div>" +
+
+        '<p class="donate-foot">' + esc(d.minimumNote) + "</p>" +
       "</section>"
     );
+  }
+
+  /* ---------- بناء كود USSD من المبلغ ---------- */
+  function buildUssd() {
+    const d = APP_CONFIG.donation;
+    const amountEl = $("#payAmount");
+    const slotEl = $("#paySlot");
+    const msgEl = $("#payMsg");
+    const copyBtn = $("#payCopy");
+    if (!amountEl || !slotEl) return;
+
+    const raw = String(amountEl.value || "").replace(/[^\d]/g, "");
+    const valid = raw !== "" && Number(raw) >= 1 && Number(raw) <= 100000;
+
+    if (!raw) {
+      slotEl.textContent = "المبلغ";
+      slotEl.className = "pay-slot";
+      copyBtn.disabled = true;
+      copyBtn.textContent = "📋 نسخ الكود";
+      if (msgEl) msgEl.textContent = "";
+      return null;
+    }
+    if (!valid) {
+      slotEl.textContent = "؟";
+      slotEl.className = "pay-slot bad";
+      copyBtn.disabled = true;
+      copyBtn.textContent = "📋 نسخ الكود";
+      if (msgEl) msgEl.textContent = "اكتب مبلغاً بين 1 و 100000 جنيه.";
+      return null;
+    }
+
+    slotEl.textContent = raw;
+    slotEl.className = "pay-slot filled";
+    copyBtn.disabled = false;
+    copyBtn.textContent = "📋 نسخ الكود";
+    if (msgEl) msgEl.textContent = "";
+    return "*9*7*" + d.phoneCash + "*" + raw + "#";
   }
 
   /* ---------- مشاركة ---------- */
