@@ -133,14 +133,19 @@
       return;
     }
 
-    /* اختلف الإصدار: نقول «أي إصلاح» مرة واحدة فقط لكل تحميل.
-       نضع العلامة بعد الحسم لا قبله، لأن التحديث قد يُلغى
-       بتحديث الصفحة — والعلامة المبكرة تترك الحالة عالقة للأبد. */
-    if (sessionStorage.getItem(GUARD)) return;
+    /* العلامة تحمل رقم الإصدار لا مجرد «١».
+       لو كانت تحمل رقماً قديماً فلا تحجب الإصلاح الحالي —
+       لهذا نتحقق من التطابق لا من وجودها فقط. */
+    if (sessionStorage.getItem(GUARD) === V) return;
+
+    /* نضع العلامة قبل العمل لا بعده: إن ألغى المستخدم التحديث
+       (أغلق الصفحة) تبقى العلامة، فيُعاد الإصلاح في الزيارة التالية.
+       وحملها رقم الإصدار يمنعها من تعطيل نسخة لاحقة. */
+    try { sessionStorage.setItem(GUARD, V); } catch (e) {}
 
     var clean = function () {
-      try { sessionStorage.removeItem(GUARD); } catch (e) {}
       try { localStorage.setItem(KEY, V); } catch (e) {}
+      try { sessionStorage.removeItem(GUARD); } catch (e) {}
       location.reload();
     };
 
