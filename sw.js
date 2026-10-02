@@ -2,21 +2,24 @@
    جامع الروابط - sw.js
    Service Worker: كاش + عمل بدون إنترنت
    ========================================== */
-const VERSION = "jr-v1.3.0";
+const VERSION = "jr-v1.4.0";
 const CORE = "core-" + VERSION;
 const RUNTIME = "runtime-" + VERSION;
 
 /* ملاحظة: لا نحزّم admin.html في الكاش.
    لوحة التحكم تحتاج اتصالاً حيّاً بـ Firebase، Presence بلا فائدة، وتشريد ذاكرة الكاش. */
+/* ملاحظة: نُدرج المسارات مع معامل الإصدار ?v=
+   بما يطابق ما هو مكتوب في index.html، وإلا لن يجد الكاش
+   طلبات index.html أثناء العمل بدون إنترنت. */
 const PRECACHE = [
   "./",
   "./index.html",
   "./manifest.json",
-  "./assets/css/style.css",
+  "./assets/css/style.css?v=1.4.0",
   "./assets/js/config.js",
   "./assets/js/data.js",
   "./assets/js/data-layer.js",
-  "./assets/js/app.js"
+  "./assets/js/app.js?v=1.4.0"
 ];
 
 self.addEventListener("install", (event) => {
@@ -63,11 +66,12 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // الأصول: الكاش أولاً
+  // الأصول: نقدّم القديم فوراً ونحدّث في الخلفية.
+  // السبب: لو اكتفينا بالكاش أولاً، لا يصل أي تحديث لمن عنده الموقع مثبّت
+  // إلا بعد رفع VERSION — فيبقى على كود قديم أسابيع.
   event.respondWith(
     caches.match(req).then((cached) => {
-      if (cached) return cached;
-      return fetch(req)
+      const fromNet = fetch(req)
         .then((res) => {
           if (res && res.status === 200 && res.type === "basic") {
             const copy = res.clone();
@@ -76,6 +80,7 @@ self.addEventListener("fetch", (event) => {
           return res;
         })
         .catch(() => cached);
+      return cached || fromNet;
     })
   );
 });
