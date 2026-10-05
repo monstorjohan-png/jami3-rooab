@@ -1278,6 +1278,7 @@
 
     reportPrevFocus = document.activeElement;
     el.hidden = false;
+    el.style.display = "";
     document.body.classList.add("modal-open");
     (blocked ? btn : firstRadio || btn).focus();
   }
@@ -1285,6 +1286,7 @@
   function closeReport() {
     if (!reportEl || reportEl.hidden) return;
     reportEl.hidden = true;
+    reportEl.style.display = "none";
 
     /* لا نزيل قفل التمرير إن كان مُنتقي الأقسام مفتوحاً في الوقت نفسه */
     const picker = $("#picker");
