@@ -153,10 +153,25 @@
     const cached = store.get(APP_CONFIG.cache.linksKey, null);
     const fresh = cached && Date.now() - (cached.at || 0) < APP_CONFIG.cache.ttlHours * 3600 * 1000;
 
-    if (fresh && Array.isArray(cached.links) && cached.links.length) {
+    /* الخريطة المخزَّنة تُهمل إن اختلف إصدار التطبيق.
+       بدون هذا الشرط يبقى المستخدم على قائمة قديمة أياماً
+       رغم تحديث الكود، فيظنّ أن الموقع لا يتغيّر أو أنه معطوب.
+       نخزّن نسخة أقدم فقط — لا نكتب في localStorage إطلاقاً. */
+    const sameVersion = cached && cached.ver === APP_CONFIG.version;
+
+    if (fresh && sameVersion && Array.isArray(cached.links) && cached.links.length) {
       state.links = cached.links;
     } else {
       state.links = local;
+      /* نُحدّث النسخة المخزَّنة إن كانت أقدم — بلا firebase */
+      try {
+        store.set(APP_CONFIG.cache.linksKey, {
+          at: Date.now(),
+          ver: APP_CONFIG.version,
+          count: local.length,
+          links: local
+        });
+      } catch (e) { /* الوضع الخاص أو تجاوز الحصة — الموقع يعمل */ }
     }
 
     // دمج الروابط القادمة من Firestore (تحديث يدوي من لوحة التحكم)
