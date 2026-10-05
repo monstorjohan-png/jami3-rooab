@@ -1316,7 +1316,6 @@
     const reason = picked ? picked.value : "";
     const key = APP_CONFIG.cache.reportsKey;
     const L = APP_CONFIG.limits;
-    const cap = L.maxReportsPerUser || 20;
 
     const check = checkUrlSafety(url);
     if (!check.ok) {
