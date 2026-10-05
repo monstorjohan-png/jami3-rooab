@@ -914,7 +914,13 @@ const RAW = [
    "security-tools", "en", "free", 500],
   ["Exploit-DB", "https://www.exploit-db.com/",
    "أرشيف آلاف الثغرات والاستغلالات لأغراض الدفاع — مرجع تؤمّن به أنظمتك قبل أن يسبقك أحد.",
-   "security-tools", "en", "free", 700]
+   "security-tools", "en", "free", 700],
+  ["CyberDefenders", "https://cyberdefenders.com/",
+   "مختبرات تحليل جنائي رقمي عبر الإنترنت — تمارين عملية على تحليل ذاكرة الحاسوب وشبكات الهجوم.",
+   "security-tools courses-free-cert", "en", "free", 700],
+  ["Security Juice", "https://securityjuice.com/",
+   "أخبار ومقالات يومية في أمن المعلومات — شرح عملي لأساليب المهاجمين وكيفية الدفاع ضدهم.",
+   "security-tools", "en", "free", 550]
 ];
 
 /* ---------- التحويل من الصيغة المضغوطة ---------- */
