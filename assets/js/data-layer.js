@@ -144,6 +144,46 @@
       });
   }
 
+  /* ---------- بلاغ رابط لا يعمل ----------
+     مجموعة منفصلة عن submissions لأن قواعد الأمان تشترط تسجيل الدخول
+     في طلبات الإضافة، بينما الإبلاغ عن رابط مكسور يجب أن ينفع لزائر
+     بلا حساب — وإلا اختفى العطل عن الذين يكتشفونه أولاً. */
+  const REPORTS_COLLECTION = "reports";
+
+  function saveReport(payload) {
+    /* لا نرمي استثناءاً: نُرجع وعداً مرفوضاً ليلتقطه .catch في المتصل.
+       السبب: الوضع المحلي (بلا مفاتيح) حالة طبيعية في هذا المشروع. */
+    if (!ready.firebase) {
+      return Promise.reject(new Error("Firebase غير مُهيّأ — الحفظ المحلي يعمل"));
+    }
+
+    const uid = ready.auth && ready.auth.currentUser ? ready.auth.currentUser.uid : null;
+
+    try {
+      return ready.db
+        .collection(REPORTS_COLLECTION)
+        .add({
+          id: payload.id,
+          title: payload.title,
+          url: payload.url,
+          reason: payload.reason,
+          reasonText: payload.reasonText,
+          note: payload.note,
+          status: "open",
+          submittedBy: uid,
+          submittedByEmail: uid && ready.auth.currentUser ? ready.auth.currentUser.email : "",
+          submittedAt: firebase.firestore.FieldValue.serverTimestamp()
+        })
+        .then(() => true)
+        .catch((e) => {
+          console.warn("report failed:", e && e.message);
+          return false;
+        });
+    } catch (e) {
+      return Promise.reject(e);
+    }
+  }
+
   /* ---------- تسجيل الدخول بجوجل ---------- */
   function loginGoogle(msgEl) {
     if (!ready.firebase) {
@@ -241,6 +281,7 @@
     get db() { return ready.db; },
     loadPublicLinks: loadPublicLinks,
     saveSubmission: saveSubmission,
+    saveReport: saveReport,
     syncUserProfile: syncUserProfile,
     loginGoogle: loginGoogle,
     logout: logout,

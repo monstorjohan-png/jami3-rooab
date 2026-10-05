@@ -47,6 +47,8 @@ const APP_CONFIG = {
     maxReadsPerDay: 40000,        // لا نقرأ بدون كاش محلي
     maxWritesPerDay: 20000,
     maxSubmissionsPerUser: 5,     // كحد أقصى يومياً لكل مستخدم
+    maxReportsPerUser: 20,        // سقف بلاغات الروابط في المتصفح الواحد
+    maxReportNoteLength: 300,     // أقصى طول للملاحظة في بلاغ الرابط
     maxTitleLength: 120,
     maxDescLength: 400,
     maxUrlLength: 300,
@@ -61,14 +63,15 @@ const APP_CONFIG = {
        تلقائياً — بما فيها قائمة الروابط المخزّنة في المتصفح.
        يُرفع عبر: node tools/sync-version.js --bump
        ملاحظة: هذا الحقل يُقرأ عند المقارنة فقط. */
-    version: "1.4.6",
+    version: "1.4.8",
     /* عدد الروابط في data.js. يحرسه guardDataIntegrity في app.js:
        إن استُلم عدد مختلف، يُقاس الملف من الشبكة ويُصحَّح الكاش.
        يُحدَّث آلياً عبر: node tools/sync-version.js --bump */
-    expectedLinks: 596,
+    expectedLinks: 626,
     linksKey: "jr_links_cache",
     usersKey: "jr_users_local",
     submissionsKey: "jr_submissions_local",
+    reportsKey: "jr_reports_local",
     logKey: "jr_download_log",
     searchKey: "jr_search_history",
     ttlHours: 24                  // مدة صلاحية الكاش

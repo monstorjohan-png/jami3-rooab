@@ -18,7 +18,11 @@
     isAdmin: false,
     remoteLinks: [],
     perPage: 12,
-    page: 1
+    page: 1,
+    /* عدد بلاغات الروابط حسب الرابط المُبلَّغ عنه — صفر أو واحد في الغالب.
+       تُقرأ من التخزين المحلي مرة واحدة قبل أول عرض، حتى لا يظهر الزر
+       على بطاقة بلَّغ عنها الزائر نفسه قبل دقائق كأنه لم يُبلَّغ بعد. */
+    reportCounts: {}
   };
 
   const $ = (sel, root) => (root || document).querySelector(sel);
@@ -261,6 +265,13 @@
           '<a class="btn btn-primary" href="' + esc(l.url) + '" target="_blank" rel="noopener noreferrer">زيارة الموقع ←</a>' +
           '<button class="btn btn-ghost btn-sm" data-copy="' + esc(l.url) + '">نسخ</button>' +
         "</div>" +
+        /* صف مستقل عن card-foot حتى لا يزاحم زر الزيارة وزر النسخ
+           على شاشة الهاتف ضيقة */
+        '<button class="btn btn-ghost btn-sm card-report" type="button" data-report="' +
+          esc(l.url) + '" data-report-title="' + esc(l.title) +
+          '" aria-label="أبلغ عن رابط لا يعمل">' +
+          (state.reportCounts[normUrl(l.url)] ? "✔ بُلِّغ" : "🚨 أبلغ عن رابط مكسور") +
+        "</button>" +
       "</article>"
     );
   }
@@ -789,6 +800,20 @@
       const t = e.target;
 
       if (t.closest && t.closest("#sSubmit")) { e.preventDefault(); handleSubmit(); return; }
+
+      /* الإبلاغ عن رابط لا يعمل — أزرار البطاقات والنافذة */
+      const reportBtn = t.closest && t.closest("[data-report]");
+      if (reportBtn) {
+        e.preventDefault();
+        openReport(reportBtn.dataset.report, reportBtn.dataset.reportTitle);
+        return;
+      }
+      if (t.closest && t.closest("#reportSend")) { e.preventDefault(); handleReport(); return; }
+      if (t.closest && t.closest("#reportClose")) { closeReport(); return; }
+      if (t.closest && t.closest("#reportCancel")) { closeReport(); return; }
+      /* الخلفية فقط: النقر داخل النافذة يجب ألّا يغللقها */
+      if (t.id === "reportOverlay") { closeReport(); return; }
+
       if (t.closest && t.closest("#donateCopy")) { copyText(APP_CONFIG.donation.phoneCash); return; }
 
       /* التبرع — أزرار مبالغ سريعة */
@@ -1054,6 +1079,308 @@
     } else {
       done(false);
     }
+  }
+
+  /* ==========================================================
+     الإبلاغ عن رابط لا يعمل
+     نمط النسخة مقيس على handleSubmit أعلاه: نفس التخزين المحلي
+     ونفس فحص أمان الرابط ونفس بنية (payload + done + catch).
+     ========================================================== */
+
+  /* أسباب البلاغ — قيمها تُرسَل إلى القاعدة بأسماء ثابتة (إنجليزية)
+     حتى تُقارَن بقائمة بيضاء في firestore.rules، والعرض بالعربية. */
+  const REPORT_REASONS = [
+    { v: "dead", label: "رابط لا يفتح" },
+    { v: "changed", label: "الرابط يعمل لكن محتواه تغيّر" },
+    { v: "misleading", label: "محتوى مخالف أو مضلّل" },
+    { v: "login", label: "يحتاج تسجيل دخول" },
+    { v: "other", label: "أخرى" }
+  ];
+
+  const reasonLabel = (code) => {
+    const hit = REPORT_REASONS.filter((r) => r.v === code)[0];
+    return hit ? hit.label : "أخرى";
+  };
+
+  /* توحيد شكل الرابط قبل المقارنة — يُهمل الشرطة الأخيرة مثل loadData */
+  const normUrl = (u) => String(u || "").trim().replace(/\/+$/, "");
+
+  const reportId = () =>
+    "r" + Date.now().toString(36) + Math.floor(Math.random() * 46656).toString(36);
+
+  function loadReportCounts() {
+    state.reportCounts = {};
+    const list = store.get(APP_CONFIG.cache.reportsKey, []);
+    if (!Array.isArray(list)) return;
+    list.forEach((r) => {
+      const k = normUrl(r && r.url);
+      if (k) state.reportCounts[k] = (state.reportCounts[k] || 0) + 1;
+    });
+  }
+
+  /* ---------- بناء النافذة مرة واحدة ---------- */
+  let reportEl = null;
+  let reportPrevFocus = null;
+  let reportLastOpen = 0;
+  let reportBusy = false;
+
+  function buildReportModal() {
+    if (reportEl) return reportEl;
+
+    const wrap = document.createElement("div");
+    wrap.className = "modal-backdrop";
+    wrap.id = "reportOverlay";
+    wrap.hidden = true;
+
+    wrap.innerHTML =
+      '<div class="modal report-modal" id="reportModal" role="dialog" aria-modal="true" ' +
+        'aria-labelledby="reportTitle">' +
+        '<div class="report-head">' +
+          '<h3 id="reportTitle">🚨 أبلغ عن رابط لا يعمل</h3>' +
+          '<button class="modal-close" type="button" id="reportClose" aria-label="إغلاق">✕</button>' +
+        "</div>" +
+
+        '<div class="report-target">' +
+          "<b id=\"reportName\"></b>" +
+          '<code id="reportUrl" dir="ltr"></code>' +
+        "</div>" +
+
+        '<div class="report-reasons" role="radiogroup" aria-labelledby="reportReasonLbl">' +
+          '<span class="field-label" id="reportReasonLbl">سبب البلاغ</span>' +
+          REPORT_REASONS.map((r, i) =>
+            '<label class="reason-item">' +
+              '<input type="radio" name="reportReason" value="' + esc(r.v) + '"' +
+                (i === 0 ? " checked" : "") + " />" +
+              "<span>" + esc(r.label) + "</span>" +
+            "</label>"
+          ).join("") +
+        "</div>" +
+
+        '<div class="report-field">' +
+          '<label class="field-label" for="reportNote">ملاحظة (اختياري)</label>' +
+          '<textarea class="textarea" id="reportNote" maxlength="300" ' +
+            'placeholder="اكتب ما حدث بالاختصار"></textarea>' +
+        "</div>" +
+
+        '<div id="reportMsg" role="status" aria-live="polite"></div>' +
+
+        '<div class="report-actions">' +
+          '<button class="btn btn-primary" type="button" id="reportSend">إرسال البلاغ</button>' +
+          '<button class="btn btn-ghost" type="button" id="reportCancel">إلغاء</button>' +
+        "</div>" +
+      "</div>";
+
+    document.body.appendChild(wrap);
+    reportEl = wrap;
+    return wrap;
+  }
+
+  const reportFocusables = () => {
+    if (!reportEl || reportEl.hidden) return [];
+    return $$("button, input, textarea, select, a[href]", reportEl).filter(
+      (n) => !n.disabled && n.type !== "hidden"
+    );
+  };
+
+  /* حبس التركيز داخل النافذة + الإغلاق بمفتاح Escape */
+  function bindReportKeys() {
+    document.addEventListener("keydown", function (e) {
+      if (!reportEl || reportEl.hidden) return;
+
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeReport();
+        return;
+      }
+      if (e.key !== "Tab") return;
+
+      const f = reportFocusables();
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    });
+  }
+
+  /* ---------- فتح النافذة ---------- */
+  function openReport(url, title) {
+    /* debounce: الضغط المتكرر أو نقر مزدوج لا يفتح نافذتين */
+    const now = Date.now();
+    if (now - reportLastOpen < 700) return;
+    reportLastOpen = now;
+
+    const target = String(url || "").trim();
+    if (!target) return;
+
+    /* نفس فحص handleSubmit — الرابط المُبلَّغ عنه يجب أن يمرّ منه */
+    const check = checkUrlSafety(target);
+    if (!check.ok) {
+      toast(check.reason, "err");
+      return;
+    }
+
+    const el = buildReportModal();
+    const msg = $("#reportMsg", el);
+    const btn = $("#reportSend", el);
+    const firstRadio = $('input[name="reportReason"]', el);
+
+    $("#reportName", el).textContent = String(title || "رابط بلا اسم");
+    $("#reportUrl", el).textContent = target;
+    $("#reportNote", el).value = "";
+    msg.innerHTML = "";
+
+    const already = store
+      .get(APP_CONFIG.cache.reportsKey, [])
+      .some((r) => normUrl(r.url) === normUrl(target));
+
+    if (already) {
+      msg.innerHTML =
+        '<div class="security-note warn">أرسلتَ بلاغاً عن هذا الرابط من متصفحك سابقاً.</div>';
+      btn.disabled = true;
+      btn.textContent = "تم الإبلاغ مسبقاً";
+    } else {
+      btn.disabled = false;
+      btn.textContent = "إرسال البلاغ";
+    }
+
+    if (firstRadio) firstRadio.checked = true;
+
+    reportPrevFocus = document.activeElement;
+    el.hidden = false;
+    document.body.classList.add("modal-open");
+    (already ? btn : firstRadio || btn).focus();
+  }
+
+  function closeReport() {
+    if (!reportEl || reportEl.hidden) return;
+    reportEl.hidden = true;
+
+    /* لا نزيل قفل التمرير إن كان مُنتقي الأقسام مفتوحاً في الوقت نفسه */
+    const picker = $("#picker");
+    if (!(picker && !picker.hidden)) document.body.classList.remove("modal-open");
+
+    if (reportPrevFocus && typeof reportPrevFocus.focus === "function") {
+      try { reportPrevFocus.focus(); } catch (e) {}
+    }
+    reportPrevFocus = null;
+  }
+
+  /* ---------- إرسال البلاغ ---------- */
+  function handleReport() {
+    const el = reportEl;
+    if (!el || el.hidden) return;
+    if (reportBusy) return;
+
+    const nameEl = $("#reportName", el);
+    const urlEl = $("#reportUrl", el);
+    const noteEl = $("#reportNote", el);
+    const msg = $("#reportMsg", el);
+    const btn = $("#reportSend", el);
+    if (!urlEl || !msg || !btn) return;
+
+    const url = urlEl.textContent.trim();
+    const title = nameEl ? nameEl.textContent.trim() : "";
+    const note = noteEl ? noteEl.value.trim() : "";
+    const picked = $('input[name="reportReason"]:checked', el);
+    const reason = picked ? picked.value : "";
+    const key = APP_CONFIG.cache.reportsKey;
+    const L = APP_CONFIG.limits;
+    const cap = L.maxReportsPerUser || 20;
+
+    const check = checkUrlSafety(url);
+    if (!check.ok) {
+      msg.innerHTML = '<div class="security-note danger">⛔ ' + esc(check.reason) + "</div>";
+      return;
+    }
+    if (!reason) {
+      msg.innerHTML = '<div class="security-note danger">اختر سبب البلاغ.</div>';
+      return;
+    }
+
+    const localList = store.get(key, []);
+    const k = normUrl(url);
+
+    /* فحص التكرار: نفس الرابط لا مرتين من المتصفح نفسه */
+    const inList = (arr) => arr.some((x) => normUrl(x.url) === k);
+
+    if (inList(localList)) {
+      msg.innerHTML =
+        '<div class="security-note warn">أرسلتَ بلاغاً عن هذا الرابط من متصفحك سابقاً.</div>';
+      btn.disabled = true;
+      return;
+    }
+    if (localList.length >= cap) {
+      msg.innerHTML = '<div class="security-note danger">بلغت الحد الأقصى ' + cap +
+        " بلاغ من هذا المتصفح. جرّب متصفحاً آخر أو امسح بيانات الموقع.</div>";
+      btn.disabled = true;
+      return;
+    }
+
+    const payload = {
+      id: reportId(),
+      title: title.slice(0, L.maxTitleLength || 120),
+      url: url.slice(0, L.maxUrlLength || 300),
+      reason: reason,
+      reasonText: reasonLabel(reason),
+      note: note.slice(0, L.maxReportNoteLength || 300),
+      status: "open",
+      at: Date.now()
+    };
+
+    reportBusy = true;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> جاري الإرسال...';
+    msg.innerHTML = "";
+
+    const done = (remoteOk) => {
+      reportBusy = false;
+
+      const cur = store.get(key, []);
+      cur.push(payload);
+      store.set(key, cur.slice(-50));
+
+      state.reportCounts[k] = (state.reportCounts[k] || 0) + 1;
+      paintReportButtons();
+
+      btn.disabled = true;
+      btn.textContent = "✔ بُلِّغ";
+      msg.innerHTML = remoteOk
+        ? '<div class="security-note">✅ تم إرسال بلاغك. شكراً لك — سيتحقق المشرف من الرابط.</div>'
+        : '<div class="security-note">✅ تم حفظ بلاغك محلياً في انتظار المزامنة. يعمل الموقع حتى بدون إنترنت.</div>';
+      toast(remoteOk ? "تم إرسال البلاغ" : "حُفظ البلاغ محلياً", "ok");
+    };
+
+    if (Data && Data.saveReport) {
+      Data.saveReport(payload).then(done).catch(() => done(false));
+    } else {
+      done(false);
+    }
+  }
+
+  /* زر الإبلاغ داخل كل بطاقة — يُحدَّث فوراً بعد الإرسال بلا إعادة بناء */
+  function paintReportButtons() {
+    $$("[data-report]").forEach((b) => {
+      const doneAlready = state.reportCounts[normUrl(b.dataset.report)];
+      if (doneAlready) {
+        b.textContent = "✔ بُلِّغ";
+        b.disabled = true;
+        b.classList.add("done");
+        b.setAttribute("aria-label", "تم الإبلاغ عن هذا الرابط");
+      } else {
+        b.textContent = "🚨 أبلغ عن رابط مكسور";
+        b.disabled = false;
+        b.classList.remove("done");
+        b.setAttribute(
+          "aria-label",
+          "أبلغ عن رابط لا يعمل: " + (b.dataset.reportTitle || "")
+        );
+      }
+    });
   }
 
   /* ---------- تبرع ---------- */
@@ -1410,12 +1737,16 @@
   /* ---------- تهيئة ---------- */
   function boot() {
     loadData();
+    /* قبل أول render حتى تظهر البطاقة المُبلَّغ عنها على حالها */
+    loadReportCounts();
     guardDataIntegrity();
     filterFromHash();
     renderNav();
     renderJumpSelect();
     renderChips();
     render();
+    buildReportModal();
+    bindReportKeys();
     bindDelegated();
     bindSearch();
     bindTheme();
@@ -1472,6 +1803,7 @@
     state: state,
     toast: toast,
     checkUrlSafety: checkUrlSafety,
+    openReport: openReport,
     resetFilters: resetFilters,
     reload: function () { loadData(); render(); }
   };

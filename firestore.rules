@@ -144,6 +144,27 @@ service cloud.firestore {
           && optionalInt(d, 'donationGoal');
     }
 
+    // بلاغ رابط لا يعمل: حقول محدودة، والسبب من قائمة بيضاء، والرابط HTTPS
+    // يُستثنى الحقل id لأنه يُولَّد في المتصفح ويُعرض للمشرف فقط.
+    function isValidReportDoc(d) {
+      return d.keys().hasOnly([
+              'id', 'title', 'url', 'reason', 'reasonText', 'note',
+              'status', 'submittedBy', 'submittedByEmail', 'submittedAt'
+            ])
+          && reqStr(d, 'id', 4, 64)
+          && reqStr(d, 'title', 2, 120)
+          && isValidUrl(d.url)
+          && reqStr(d, 'reason', 3, 20)
+          && d.reason in ['dead', 'changed', 'misleading', 'login', 'other']
+          && optionalStr(d, 'reasonText', 60)
+          && optionalStr(d, 'note', 300)
+          && reqStr(d, 'status', 3, 10)
+          && d.status == 'open'
+          && optionalStr(d, 'submittedBy', 128)
+          && optionalStr(d, 'submittedByEmail', 254)
+          && optionalTime(d, 'submittedAt');
+    }
+
     // نشرة البريد: معرّف المستند هو البريد نفسه، ولا تتقبل حقن حقل خفي
     function isValidNewsletter(d, emailId) {
       return d.keys().hasOnly(['email', 'subscribedAt', 'source'])
@@ -296,6 +317,27 @@ service cloud.firestore {
 
       // لا قراءة عامة: كشف بريد مشترك تسريبٌ لبيانات شخصية
       allow read: if isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    // ======================= reports =======================
+    match /reports/{repId} {
+
+      /* بلاغ رابط لا يعمل — الاستثناء الوحيد على قاعدة "كل كتابة تتطلب
+         تسجيل دخول". السبب: إخفاء عطل الموقع عمّن يكتشفه بلا حساب Google.
+         كل حقل مقيد بدالة التحقق أعلاه، والسبب من قائمة بيضاء،
+         والتاريخ يفرضه الخادم، ولا حقول مراجعة يمكن حقنها. */
+      allow create: if isValidReportDoc(request.resource.data)
+                     && repId.size() >= 6 && repId.size() <= 64
+                     && request.resource.data.status == 'open'
+                     && request.resource.data.submittedAt == request.time
+                     && request.resource.data.get('reviewedAt', null) == null
+                     && request.resource.data.get('reviewedBy', null) == null;
+
+      // لا قراءة عامة إطلاقاً: بلاغات الزوار بيانات شخصية، والمشرف فقط
+      allow read: if isAdmin();
+
+      // المراجعة والحذف من لوحة المشرف فقط
       allow update, delete: if isAdmin();
     }
 

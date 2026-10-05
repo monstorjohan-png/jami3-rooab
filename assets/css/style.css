@@ -649,6 +649,61 @@ label.field-label { font-size: .85rem; font-weight: 700; color: var(--muted); di
 }
 .modal-close:hover { color: var(--danger); }
 
+/* ---------- الإبلاغ عن رابط لا يعمل ---------- */
+.card-report {
+  align-self: flex-start; margin-top: .55rem;
+  font-size: .72rem; padding: .28rem .6rem; color: var(--muted);
+}
+.card-report:hover:not(:disabled) { color: var(--danger); border-color: var(--danger); }
+.card-report.done { color: var(--accent); border-color: var(--accent); }
+.card-report:disabled { opacity: .85; cursor: default; }
+
+.report-modal { max-width: 560px; }
+.report-modal .modal-close { float: none; }
+.report-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: .75rem; margin-bottom: .9rem;
+}
+.report-head h3 { margin: 0; font-size: 1.15rem; }
+
+.report-target {
+  background: var(--bg); border: 1px solid var(--border-2);
+  border-radius: var(--radius-sm); padding: .7rem .85rem; margin-bottom: .95rem;
+}
+.report-target b { display: block; font-size: .95rem; color: var(--text); }
+.report-target code {
+  display: block; margin-top: .25rem; font-size: .72rem; color: var(--muted);
+  direction: ltr; text-align: right; word-break: break-all;
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.report-reasons { display: grid; gap: .4rem; margin-bottom: .9rem; }
+.reason-item {
+  display: flex; align-items: center; gap: .55rem;
+  padding: .5rem .7rem; border: 1px solid var(--border-2);
+  border-radius: var(--radius-sm); background: var(--bg);
+  font-size: .87rem; color: var(--text); cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+.reason-item:hover { border-color: var(--accent); }
+.reason-item input { accent-color: var(--accent); width: 1rem; height: 1rem; flex-shrink: 0; }
+.reason-item:has(input:checked) {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg));
+}
+.reason-item:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.report-field { margin-bottom: .25rem; }
+.report-actions { display: flex; gap: .5rem; margin-top: 1rem; flex-wrap: wrap; }
+.report-actions .btn { flex: 1; min-width: 130px; }
+
+@media (max-width: 480px) {
+  .modal-backdrop { padding: .6rem; }
+  .modal { padding: 1.1rem; }
+  .report-head h3 { font-size: 1rem; }
+  .report-actions .btn { min-width: 0; }
+}
+
 /* ---------- Tabs ---------- */
 .tabs { display: flex; gap: .3rem; border-bottom: 1px solid var(--border); margin-bottom: 1.25rem; flex-wrap: wrap; }
 .tab {
