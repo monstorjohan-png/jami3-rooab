@@ -1122,6 +1122,7 @@
   let reportEl = null;
   let reportPrevFocus = null;
   let reportLastOpen = 0;
+  let reportLastUrl = "";
   let reportBusy = false;
 
   function buildReportModal() {
@@ -1208,14 +1209,42 @@
   }
 
   /* ---------- فتح النافذة ---------- */
-  function openReport(url, title) {
-    /* debounce: الضغط المتكرر أو نقر مزدوج لا يفتح نافذتين */
-    const now = Date.now();
-    if (now - reportLastOpen < 700) return;
-    reportLastOpen = now;
+  /* سبب يمنع الإرسال — نفس النص المستخدم في handleReport.
+     يعيد {msg, kind, label} أو null إن كان الإرسال ممكناً. */
+  const blockReason = (url) => {
+    const list = store.get(APP_CONFIG.cache.reportsKey, []);
+    const arr = Array.isArray(list) ? list : [];
 
+    if (arr.some((r) => normUrl(r && r.url) === normUrl(url))) {
+      return {
+        msg: "أرسلتَ بلاغاً عن هذا الرابط من متصفحك سابقاً.",
+        kind: "warn",
+        label: "تم الإبلاغ مسبقاً"
+      };
+    }
+    const cap = APP_CONFIG.limits.maxReportsPerUser || 20;
+    if (arr.length >= cap) {
+      return {
+        msg: "بلغت الحد الأقصى " + cap +
+          " بلاغ من هذا المتصفح. جرّب متصفحاً آخر أو امسح بيانات الموقع.",
+        kind: "danger",
+        label: "بلغت الحد الأقصى"
+      };
+    }
+    return null;
+  };
+
+  function openReport(url, title) {
     const target = String(url || "").trim();
     if (!target) return;
+
+    /* debounce: نقر مزدوج على الزر نفسه لا يعيد بناء النافذة */
+    const now = Date.now();
+    if (reportEl && !reportEl.hidden && reportLastUrl === target && now - reportLastOpen < 700) {
+      return;
+    }
+    reportLastOpen = now;
+    reportLastUrl = target;
 
     /* نفس فحص handleSubmit — الرابط المُبلَّغ عنه يجب أن يمرّ منه */
     const check = checkUrlSafety(target);
@@ -1234,15 +1263,12 @@
     $("#reportNote", el).value = "";
     msg.innerHTML = "";
 
-    const already = store
-      .get(APP_CONFIG.cache.reportsKey, [])
-      .some((r) => normUrl(r.url) === normUrl(target));
-
-    if (already) {
-      msg.innerHTML =
-        '<div class="security-note warn">أرسلتَ بلاغاً عن هذا الرابط من متصفحك سابقاً.</div>';
+    const blocked = blockReason(target);
+    if (blocked) {
+      msg.innerHTML = '<div class="security-note ' + blocked.kind + '">' +
+        esc(blocked.msg) + "</div>";
       btn.disabled = true;
-      btn.textContent = "تم الإبلاغ مسبقاً";
+      btn.textContent = blocked.label;
     } else {
       btn.disabled = false;
       btn.textContent = "إرسال البلاغ";
@@ -1253,7 +1279,7 @@
     reportPrevFocus = document.activeElement;
     el.hidden = false;
     document.body.classList.add("modal-open");
-    (already ? btn : firstRadio || btn).focus();
+    (blocked ? btn : firstRadio || btn).focus();
   }
 
   function closeReport() {
@@ -1302,22 +1328,15 @@
       return;
     }
 
-    const localList = store.get(key, []);
     const k = normUrl(url);
 
-    /* فحص التكرار: نفس الرابط لا مرتين من المتصفح نفسه */
-    const inList = (arr) => arr.some((x) => normUrl(x.url) === k);
-
-    if (inList(localList)) {
-      msg.innerHTML =
-        '<div class="security-note warn">أرسلتَ بلاغاً عن هذا الرابط من متصفحك سابقاً.</div>';
+    /* فحص التكرار والسقف: نفس الرابط لا مرتين من المتصفح نفسه */
+    const blocked = blockReason(url);
+    if (blocked) {
+      msg.innerHTML = '<div class="security-note ' + blocked.kind + '">' +
+        esc(blocked.msg) + "</div>";
       btn.disabled = true;
-      return;
-    }
-    if (localList.length >= cap) {
-      msg.innerHTML = '<div class="security-note danger">بلغت الحد الأقصى ' + cap +
-        " بلاغ من هذا المتصفح. جرّب متصفحاً آخر أو امسح بيانات الموقع.</div>";
-      btn.disabled = true;
+      btn.textContent = blocked.label;
       return;
     }
 
