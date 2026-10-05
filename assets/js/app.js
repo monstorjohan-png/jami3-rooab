@@ -156,8 +156,10 @@
     /* الخريطة المخزَّنة تُهمل إن اختلف إصدار التطبيق.
        بدون هذا الشرط يبقى المستخدم على قائمة قديمة أياماً
        رغم تحديث الكود، فيظنّ أن الموقع لا يتغيّر أو أنه معطوب.
-       نخزّن نسخة أقدم فقط — لا نكتب في localStorage إطلاقاً. */
-    const sameVersion = cached && cached.ver === APP_CONFIG.version;
+       ملاحظة مهمة: يجب المقارنة بـ cache.version لا version —
+       الأخيرة غير موجودة فتصبح المقارنة undefined === undefined
+       فيمرّ الكاش القديم بلا فحص. */
+    const sameVersion = cached && cached.ver === APP_CONFIG.cache.version;
 
     if (fresh && sameVersion && Array.isArray(cached.links) && cached.links.length) {
       state.links = cached.links;
@@ -167,7 +169,7 @@
       try {
         store.set(APP_CONFIG.cache.linksKey, {
           at: Date.now(),
-          ver: APP_CONFIG.version,
+          ver: APP_CONFIG.cache.version,
           count: local.length,
           links: local
         });
@@ -187,8 +189,18 @@
     });
   }
 
+  /* لا بدّ من كتابة ver مع كل حفظ. نسخة بلا ver تُرفض لاحقاً
+     (فحص الإصدار يفشل) فتُهمل وتُعاد قراءتها من data.js — وهو
+     ما حدث فعلاً فبقيت قائمة 525 رابطاً لأيام. */
   function persistCache() {
-    store.set(APP_CONFIG.cache.linksKey, { at: Date.now(), links: state.links });
+    try {
+      store.set(APP_CONFIG.cache.linksKey, {
+        at: Date.now(),
+        ver: APP_CONFIG.cache.version,
+        count: state.links.length,
+        links: state.links
+      });
+    } catch (e) { /* تجاوز الحصة — الموقع يعمل بلا كاش */ }
   }
 
   /* ---------- الفلترة والفرز ---------- */
@@ -1344,9 +1356,61 @@
     }
   }
 
+  /* ---------- حارس سلامة البيانات ----------
+     المشكلة التي عالجها: عامل الخدمة قد يقدّم data.js قديمة تحت
+     اسم ملف مطابق لرقم إصدار حديث. عندها يبدو كل شيء سليماً —
+     أرقام الإصدار متطابقة — بينما القائمة ناقصة أو فيها روابط
+     محذوفة. لا رقم إصدار ولا فحص داخلي يكشف ذلك، لأن الكاذب
+     والصحيح متساويان في كل ما يراه المتصفح.
+
+     الحل: رقم عدد الروابط المتوقع موجود في config.js (خادم).
+     إن اختلف عمّا استُلم، نسأل الشبكة مباشرةً (باستعلام عشوائي
+     حتى لا يخدمه الكاش)، فإن أعطت العدد الصحيح فالكاش كاذب:
+     نزيل عامل الخدمة والكاش ثم نعيد التحميل — مرة واحدة فقط
+     عبر sessionStorage كي لا ندخل حلقة إعادة تحميل لا نهائية. */
+  function countEntries(txt) {
+    const m = txt.match(/^\s*\[\s*"/gm);
+    return m ? m.length : 0;
+  }
+
+  function guardDataIntegrity() {
+    const want = APP_CONFIG.cache.expectedLinks;
+    if (!want || LINKS.length === want) return;
+
+    const flag = "jr_data_guard";
+    let done = false;
+    try { done = !!sessionStorage.getItem(flag); } catch (e) { return; }
+    if (done) return;
+    try { sessionStorage.setItem(flag, "1"); } catch (e) { return; }
+
+    fetch("assets/js/data.js?probe=" + Date.now(), { cache: "no-store" })
+      .then(function (res) { return res.ok ? res.text() : ""; })
+      .then(function (txt) {
+        const live = countEntries(txt);
+        if (live !== want) return;          /* الشبكة نفسها قديمة — لا نفعل شيئاً */
+        if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+          navigator.serviceWorker.getRegistrations().then(function (regs) {
+            return Promise.all(regs.map(function (r) { return r.unregister(); }));
+          }).catch(function () {}).then(clearAllCaches);
+        } else {
+          clearAllCaches();
+        }
+      })
+      .catch(function () {});
+  }
+
+  function clearAllCaches() {
+    if (!window.caches) { location.reload(); return; }
+    caches.keys()
+      .then(function (keys) { return Promise.all(keys.map(function (k) { return caches.delete(k); })); })
+      .catch(function () {})
+      .then(function () { location.reload(); });
+  }
+
   /* ---------- تهيئة ---------- */
   function boot() {
     loadData();
+    guardDataIntegrity();
     filterFromHash();
     renderNav();
     renderJumpSelect();

@@ -61,7 +61,11 @@ const APP_CONFIG = {
        تلقائياً — بما فيها قائمة الروابط المخزّنة في المتصفح.
        يُرفع عبر: node tools/sync-version.js --bump
        ملاحظة: هذا الحقل يُقرأ عند المقارنة فقط. */
-    version: "1.4.3",
+    version: "1.4.4",
+    /* عدد الروابط في data.js. يحرسه guardDataIntegrity في app.js:
+       إن استُلم عدد مختلف، يُقاس الملف من الشبكة ويُصحَّح الكاش.
+       يُحدَّث آلياً عبر: node tools/sync-version.js --bump */
+    expectedLinks: 569,
     linksKey: "jr_links_cache",
     usersKey: "jr_users_local",
     submissionsKey: "jr_submissions_local",
