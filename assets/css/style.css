@@ -632,6 +632,7 @@ label.field-label { font-size: .85rem; font-weight: 700; color: var(--muted); di
 @keyframes toast-in { from { opacity: 0; transform: translateY(12px); } }
 
 /* ---------- Modal ---------- */
+.modal-backdrop[hidden] { display: none !important; }
 .modal-backdrop {
   position: fixed; inset: 0; background: rgba(0, 0, 0, .65);
   backdrop-filter: blur(4px); z-index: 2500;
