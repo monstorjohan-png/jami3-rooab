@@ -1,0 +1,18 @@
+ظ£àAdded: freeCodeCamp
+ظ£àAdded: MIT OpenCourseWare
+ظإîSkipped (dead/parking): CS50
+ظإîSkipped (dead/parking): Microsoft Learn
+ظإîSkipped (dead/parking): Cisco Skills for All
+ظ£àAdded: AWS Skill Builder
+ظإîSkipped (dead/parking): Oracle University
+ظ£àAdded: Google Cloud Skills Boost
+ظ£àAdded: IBM SkillsBuild
+ظ£àAdded: DataCamp
+ظ£àAdded: Great Learning
+ظ£àAdded: StackBlitz
+ظ£àAdded: Replit
+ظإîSkipped (dead/parking): Glitch
+ظ£àAdded: Cohere
+ظ£àAdded: LlamaIndex
+
+ظ£à ╪ز┘à ╪د┘╪ح╪╢╪د┘╪ر ╪ذ┘╪ش╪د╪ص - ╪ح╪ش┘à╪د┘┘è ╪د┘┘à╪»╪د╪«┘ ╪د┘╪ش╪»┘è╪»╪ر: 11

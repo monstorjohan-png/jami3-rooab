@@ -70,7 +70,6 @@
       <button class="tab active" data-tab="pending">طلبات الزوار</button>
       <button class="tab" data-tab="add">إضافة رابط</button>
       <button class="tab" data-tab="manage">إدارة الروابط</button>
-      <button class="tab" data-tab="reports">بلاغات الروابط</button>
       <button class="tab" data-tab="users">المستخدمون</button>
     </div>
 
@@ -114,10 +113,6 @@
       <div class="table-wrap" id="manageTable"></div>
     </section>
 
-    <section id="tab-reports" class="tabpane" style="display:none">
-      <div class="table-wrap" id="reportsTable"></div>
-    </section>
-
     <section id="tab-users" class="tabpane" style="display:none">
       <div class="table-wrap" id="usersTable"></div>
     </section>
@@ -137,23 +132,6 @@
 
   const localSubs = () => { try { return JSON.parse(localStorage.getItem("jr_submissions_local") || "[]"); } catch (e) { return []; } };
   const saveLocalSubs = (l) => { try { localStorage.setItem("jr_submissions_local", JSON.stringify(l)); } catch (e) {} };
-
-  /* بلاغات الروابط — نفس نمط الطلبات: قراءة من التخزين المحلي وحذف منه */
-  const REPORTS_KEY = APP_CONFIG.cache.reportsKey;
-  const REASON_LABELS = {
-    dead: "رابط لا يفتح",
-    changed: "الرابط يعمل لكن محتواه تغيّر",
-    misleading: "محتوى مخالف أو مضلّل",
-    login: "يحتاج تسجيل دخول",
-    other: "أخرى"
-  };
-  const localReports = () => {
-    try {
-      const l = JSON.parse(localStorage.getItem(REPORTS_KEY) || "[]");
-      return Array.isArray(l) ? l : [];
-    } catch (e) { return []; }
-  };
-  const saveLocalReports = (l) => { try { localStorage.setItem(REPORTS_KEY, JSON.stringify(l)); } catch (e) {} };
 
   function fillSelects() {
     $("#aCat").innerHTML = CATEGORIES.map(c => '<option value="' + c.id + '">' + esc(c.label) + "</option>").join("");
@@ -252,53 +230,7 @@
     }));
   }
 
-  function renderReports() {
-    const box = $("#reportsTable");
-    if (!box) return;
-    const list = localReports();
-
-    if (!list.length) {
-      box.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>لا توجد بلاغات بعد.</p></div>';
-      return;
-    }
-
-    /* الأحدث أولاً: نعكس عند العرض فقط، ونحسب المؤشر الأصلي عند الحذف */
-    const rows = list.slice().reverse().map(function (r, i) {
-      const why = r.reasonText || REASON_LABELS[r.reason] || r.reason || "—";
-      const when = r.at ? new Date(r.at).toLocaleString("ar-EG") : "—";
-      const note = (r.note || "").slice(0, 90);
-      return '<tr>' +
-        '<td dir="ltr" style="text-align:right">' + esc(r.id || "—") + "</td>" +
-        "<td><b>" + esc(r.title || "—") + "</b></td>" +
-        '<td><a href="' + esc(r.url) + '" target="_blank" rel="noopener noreferrer" dir="ltr">' +
-          esc(String(r.url || "").slice(0, 40)) + "</a></td>" +
-        "<td>" + esc(why) + "</td>" +
-        '<td style="max-width:200px">' + esc(note || "—") + "</td>" +
-        "<td>" + esc(when) + "</td>" +
-        '<td><div class="row-actions">' +
-          '<button class="btn btn-danger btn-sm" data-rep-del="' + i + '">حذف</button>' +
-        "</div></td></tr>";
-    }).join("");
-
-    box.innerHTML = '<table><thead><tr>' +
-      "<th>المعرّف</th><th>اسم الرابط</th><th>الرابط</th>" +
-      "<th>السبب</th><th>الملاحظة</th><th>التاريخ</th><th>الإجراء</th>" +
-      "</tr></thead><tbody>" + rows + "</tbody></table>";
-
-    box.querySelectorAll("[data-rep-del]").forEach(function (b) {
-      b.addEventListener("click", function () {
-        const arr = localReports();
-        const idx = arr.length - 1 - Number(b.dataset.repDel);
-        if (idx < 0 || idx >= arr.length) return;
-        arr.splice(idx, 1);
-        saveLocalReports(arr);
-        renderReports();
-        updateStats();
-      });
-    });
-  }
-
-  function renderUsers() {
+    function renderUsers() {
     const box = $("#usersTable");
     if (!Data.db) { box.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--muted)">يتطلب Firebase لعرض المستخدمين.</div>'; return; }
     Data.db.collection("users").limit(200).get().then(snap => {
@@ -372,7 +304,7 @@
       $("#adminArea").style.display = "block";
       $("#welcome").textContent = "أهلاً " + (user.displayName || "مشرف");
       $("#adminEmail").textContent = user.email || "";
-      renderPending(); loadLinks(); renderUsers(); renderReports(); updateStats();
+      renderPending(); loadLinks(); renderUsers(); updateStats();
     } else {
       $("#lockBox").style.display = "block";
       $("#adminArea").style.display = "none";
