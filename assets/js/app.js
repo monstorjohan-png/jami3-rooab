@@ -38,6 +38,22 @@
     catch (e) { return "رابط"; }
   };
 
+  /* تطبيع عربي للبحث: يوحّد الهمزات والـ ة/ه والـ ى/ي ويزيل التشكيل —
+     حتى تُكتب الكلمات بأي طريقة شائعة (مثل: ثمانيه، معلومه طبيه، للاعمال) وتُوجد. */
+  const normAr = (s) =>
+    String(s == null ? "" : s)
+      .toLowerCase()
+      .normalize("NFKC")
+      .replace(/[\u064B-\u065F\u0670\u0640]/g, "")
+      .replace(/[إأآٱ]/g, "ا")
+      .replace(/ى/g, "ي")
+      .replace(/ة/g, "ه")
+      .replace(/ؤ/g, "و")
+      .replace(/ئ/g, "ي")
+      .replace(/ء/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
   const initial = (title) => (title || "؟").trim().charAt(0).toUpperCase();
 
   const store = {
@@ -220,10 +236,10 @@
       list = list.filter((l) => l.tier === state.tier);
     }
     if (state.query) {
-      const q = state.query.toLowerCase();
+      const q = normAr(state.query);
       list = list.filter((l) =>
-        (l.title || "").toLowerCase().indexOf(q) !== -1 ||
-        (l.desc || "").toLowerCase().indexOf(q) !== -1 ||
+        normAr(l.title).indexOf(q) !== -1 ||
+        normAr(l.desc).indexOf(q) !== -1 ||
         host(l.url).toLowerCase().indexOf(q) !== -1
       );
     }
@@ -1233,12 +1249,12 @@
     box.addEventListener("input", () => {
       clearTimeout(timer);
       timer = setTimeout(() => {
-        const q = box.value.trim().toLowerCase();
+        const q = normAr(box.value);
         if (q.length < 2) { out.innerHTML = ""; return; }
         const res = state.links
           .filter((l) =>
-            (l.title || "").toLowerCase().indexOf(q) !== -1 ||
-            (l.desc || "").toLowerCase().indexOf(q) !== -1 ||
+            normAr(l.title).indexOf(q) !== -1 ||
+            normAr(l.desc).indexOf(q) !== -1 ||
             host(l.url).toLowerCase().indexOf(q) !== -1
           )
           .slice(0, 8);
