@@ -308,7 +308,7 @@
           render();
           updateHeaderStats();
           persistCache();
-          toast(tr("livenessToast", l.title || host(l.url)), "warn");
+          toast(tr("livenessToast", titleOf(l) || host(l.url)), "warn");
         }
       });
     });
@@ -388,9 +388,14 @@
     }
     if (state.query) {
       const q = normAr(state.query);
+      const q2 = q.toLowerCase();
+      const enT = window.TITLE_EN || {};
+      const enD = window.DESC_EN || {};
       list = list.filter((l) =>
         normAr(l.title).indexOf(q) !== -1 ||
         normAr(l.desc).indexOf(q) !== -1 ||
+        (enT[l.url] || "").toLowerCase().indexOf(q2) !== -1 ||
+        (enD[l.url] || "").toLowerCase().indexOf(q2) !== -1 ||
         host(l.url).toLowerCase().indexOf(q) !== -1
       );
     }
@@ -398,7 +403,7 @@
     if (state.sort === "popular") {
       list.sort((a, b) => (b.votes || 0) - (a.votes || 0));
     } else if (state.sort === "az") {
-      list.sort((a, b) => (a.title || "").localeCompare(b.title || "", curLang()));
+      list.sort((a, b) => (titleOf(a) || "").localeCompare(titleOf(b) || "", curLang()));
     } else if (state.sort === "new") {
       list.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
     }
@@ -418,13 +423,13 @@
     return (
       '<article class="card">' +
         '<div class="card-head">' +
-          '<div class="card-favicon" aria-hidden="true">' + esc(initial(l.title)) + "</div>" +
+          '<div class="card-favicon" aria-hidden="true">' + esc(initial(titleOf(l))) + "</div>" +
           "<div>" +
-            "<h3>" + esc(l.title) + "</h3>" +
+            "<h3>" + esc(titleOf(l)) + "</h3>" +
             '<div class="card-host">' + esc(host(l.url)) + "</div>" +
           "</div>" +
         "</div>" +
-        '<p class="card-desc">' + esc(l.desc) + "</p>" +
+        '<p class="card-desc">' + esc(descOf(l)) + "</p>" +
         '<div class="card-meta">' + badges.join("") + "</div>" +
         (l.warn ? '<div class="security-note danger">⚠️ ' + esc(l.warn) + "</div>" : "") +
         '<div class="card-foot">' +
@@ -525,7 +530,22 @@
 
   function categoryLabel(id) {
     const c = state.categories.filter((x) => x.id === id)[0];
-    return c ? c.label : id;
+    /* الترجمة أولاً من قاموس i18n — والرجوع لتسمية config إن غاب المفتاح */
+    const bag = window.JRI18N && JRI18N.dict ? JRI18N.dict[curLang()] : null;
+    return (bag && bag["cat_" + id]) || (c ? c.label : id);
+  }
+
+  /* عنوان ووصف مترجمين للوضع الإنجليزي — من assets/js/data-en.js
+     (العربية تعرض النص الأصلي في data.js كما هو) */
+  function titleOf(l) {
+    if (curLang() !== "en") return l.title;
+    const m = window.TITLE_EN;
+    return (m && m[l.url]) || l.title;
+  }
+  function descOf(l) {
+    if (curLang() !== "en") return l.desc;
+    const m = window.DESC_EN;
+    return (m && m[l.url]) || l.desc;
   }
 
   /* ---------- إحصاءات الترويسة ---------- */
@@ -586,7 +606,7 @@
         '<button class="pick-card' + (state.filter === c.id ? " active" : "") + '" data-pick="' + c.id + '">' +
           '<span class="pick-icon" aria-hidden="true">' + esc(c.icon) + "</span>" +
           '<span class="pick-body">' +
-            '<b class="pick-title">' + esc(c.label) + "</b>" +
+            '<b class="pick-title">' + esc(categoryLabel(c.id)) + "</b>" +
             '<small class="pick-sub">' + tr("pickLangCount", langCount(c.id, "ar"), langCount(c.id, "en")) + "</small>" +
           "</span>" +
           '<span class="pick-count">' + n + "</span>" +
@@ -641,7 +661,7 @@
     sel.innerHTML =
       '<option value="all">' + tr("jumpAll", state.links.length) + "</option>" +
       state.categories.map((c) =>
-        '<option value="' + c.id + '">' + esc(c.icon) + " " + esc(c.label) +
+        '<option value="' + c.id + '">' + esc(c.icon) + " " + esc(categoryLabel(c.id)) +
         " (" + (counts[c.id] || 0) + ")</option>"
       ).join("");
     sel.value = state.filter;
@@ -655,7 +675,7 @@
     html += state.categories
       .map(
         (c) =>
-          '<button class="nav-btn" data-cat="' + c.id + '">' + esc(c.icon) + " " + esc(c.label) + "</button>"
+          '<button class="nav-btn" data-cat="' + c.id + '">' + esc(c.icon) + " " + esc(categoryLabel(c.id)) + "</button>"
       )
       .join("");
     nav.innerHTML = html;
@@ -932,7 +952,7 @@
         "</div>" +
         '<div style="margin-top:.75rem"><label class="field-label" for="sCat">' + tr("fCat") + "</label>" +
         '<select class="select" id="sCat">' +
-          state.categories.map((c) => '<option value="' + c.id + '">' + esc(c.label) + "</option>").join("") +
+          state.categories.map((c) => '<option value="' + c.id + '">' + esc(categoryLabel(c.id)) + "</option>").join("") +
         "</select></div>" +
         '<div style="margin-top:.75rem"><label class="field-label" for="sDesc">' + tr("fDesc") + "</label>" +
         '<textarea class="textarea" id="sDesc" maxlength="400" placeholder="' + tr("fDescPh") + '"></textarea></div>' +
@@ -1422,10 +1442,15 @@
       timer = setTimeout(() => {
         const q = normAr(box.value);
         if (q.length < 2) { out.innerHTML = ""; return; }
+        const enT = window.TITLE_EN || {};
+        const enD = window.DESC_EN || {};
+        const q2 = q.toLowerCase();
         const res = state.links
           .filter((l) =>
             normAr(l.title).indexOf(q) !== -1 ||
             normAr(l.desc).indexOf(q) !== -1 ||
+            (enT[l.url] || "").toLowerCase().indexOf(q2) !== -1 ||
+            (enD[l.url] || "").toLowerCase().indexOf(q2) !== -1 ||
             host(l.url).toLowerCase().indexOf(q) !== -1
           )
           .slice(0, 8);
@@ -1433,7 +1458,7 @@
           .map(
             (l) =>
               '<a href="' + esc(l.url) + '" target="_blank" rel="noopener noreferrer">' +
-                esc(l.title) + ' <small style="color:var(--muted)">— ' + esc(host(l.url)) + "</small></a>"
+                esc(titleOf(l)) + ' <small style="color:var(--muted)">— ' + esc(host(l.url)) + "</small></a>"
           )
           .join("") || '<div style="padding:.6rem;color:var(--muted);font-size:.88rem">' + tr("noResultsShort") + "</div>";
       }, 220);

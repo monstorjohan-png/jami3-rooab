@@ -259,7 +259,34 @@
       loginClosed: "أغلقت نافذة الدخول. حاول مجدداً.",
       loginBlocked: "المتصفح منع النافذة. اسمح بالنوافذ المنبثقة.",
       loginNoNet: "فشل الاتصال بالإنترنت.",
-      loginDomain: "النطاق غير مصرّح به في إعدادات مشروع Firebase."
+      loginDomain: "النطاق غير مصرّح به في إعدادات مشروع Firebase.",
+
+      /* --- أسماء الأقسام (من data.js — تظهر في الشريط والقوائم والنموذج) --- */
+      "cat_courses-free-cert": "كورسات مجانية بشهادات معتمدة",
+      "cat_courses-paid-cert": "كورسات مدفوعة بشهادات معتمدة",
+      "cat_training-cert": "شهادات تدريبية مهنية",
+      "cat_jobs-trusted": "مواقع توظيف موثوقة",
+      "cat_tools-free": "أدوات مجانية",
+      "cat_tools-paid": "أدوات مدفوعة",
+      "cat_ai-free": "ذكاء اصطناعي مجاني",
+      "cat_ai-paid": "ذكاء اصطناعي مدفوع",
+      "cat_ai-tools": "أدوات ومجلدات الذكاء الاصطناعي",
+      "cat_ecommerce-free": "بيع وطباعة عند الطلب مجاناً",
+      "cat_ecommerce-paid": "متاجر ومنصات بيع",
+      "cat_affiliate": "التسويق بالعمولة",
+      "cat_freelance": "العمل الحر",
+      "cat_books-free": "كتب مجانية",
+      "cat_books-paid": "كتب وكورسات مدفوعة",
+      "cat_games-programs": "ألعاب وبرامج آمنة",
+      "cat_security-tools": "أمان وحماية وخصوصية",
+      "cat_organize-tools": "تنظيم وإنتاجية",
+      "cat_tech-news": "أخبار التقنية والعلوم",
+      "cat_health-fitness": "الصحة واللياقة",
+      "cat_travel": "السفر والسياحة",
+      "cat_food-recipes": "الطبخ والوصفات",
+      "cat_islamic": "المحتوى الإسلامي الموثوق",
+      "cat_finance-basics": "الثقافة المالية",
+      "cat_kids-education": "الأطفال والتعليم المبكر"
     },
 
     en: {
@@ -503,7 +530,34 @@
       loginClosed: "You closed the sign-in window. Try again.",
       loginBlocked: "The browser blocked the popup. Allow pop-ups.",
       loginNoNet: "Internet connection failed.",
-      loginDomain: "This domain is not authorized in your Firebase project settings."
+      loginDomain: "This domain is not authorized in your Firebase project settings.",
+
+      /* --- Section names (from data.js — nav, dropdowns, submit form) --- */
+      "cat_courses-free-cert": "Free Certified Courses",
+      "cat_courses-paid-cert": "Paid Certified Courses",
+      "cat_training-cert": "Professional Training Certificates",
+      "cat_jobs-trusted": "Trusted Job Sites",
+      "cat_tools-free": "Free Tools",
+      "cat_tools-paid": "Paid Tools",
+      "cat_ai-free": "Free AI",
+      "cat_ai-paid": "Paid AI",
+      "cat_ai-tools": "AI Tools & Directories",
+      "cat_ecommerce-free": "Free Dropshipping & Print-on-Demand",
+      "cat_ecommerce-paid": "Stores & Selling Platforms",
+      "cat_affiliate": "Affiliate Marketing",
+      "cat_freelance": "Freelancing",
+      "cat_books-free": "Free Books",
+      "cat_books-paid": "Paid Books & Courses",
+      "cat_games-programs": "Safe Games & Programs",
+      "cat_security-tools": "Security, Protection & Privacy",
+      "cat_organize-tools": "Organization & Productivity",
+      "cat_tech-news": "Tech & Science News",
+      "cat_health-fitness": "Health & Fitness",
+      "cat_travel": "Travel & Tourism",
+      "cat_food-recipes": "Food & Recipes",
+      "cat_islamic": "Trusted Islamic Content",
+      "cat_finance-basics": "Financial Literacy",
+      "cat_kids-education": "Kids & Early Education"
     }
   };
 
