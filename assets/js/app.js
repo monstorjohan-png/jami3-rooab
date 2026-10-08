@@ -119,8 +119,12 @@
         return { ok: false, reason: "بروتوكول خطير قد يؤدي لهجمات XSS" };
       }
     }
+    /* الإلزام: https فقط — روابط http مكشوفة للاعتراض ومرفوضة هنا */
+    if (lower.indexOf("http://") === 0) {
+      return { ok: false, reason: "روابط http غير مقبولة — الرابط يجب أن يبدأ بـ https" };
+    }
     if (!/^https?:\/\//i.test(url)) {
-      return { ok: false, reason: "يجب أن يبدأ الرابط بـ https:// أو http://" };
+      return { ok: false, reason: "يجب أن يبدأ الرابط بـ https://" };
     }
 
     let parsed;
@@ -145,6 +149,25 @@
       return { ok: false, reason: "لا نقبل عناوين الشبكة الداخلية" };
     }
 
+    /* نطاقات punycode (بـ xn--) قد تنتحل هوية مواقع شهيرة بحروف تُشبهها */
+    if (hostOnly.indexOf("xn--") !== -1) {
+      return { ok: false, reason: "نطاق بحروف مشبوهة — قد يُستخدم في انتحال هوية موقع آخر" };
+    }
+
+    /* انتهاءات مرتبطة بالاحتيال أو التحميل غير الآمن:
+       النطاقات الحرة (.tk ونحوها) منتشرة في التصيد،
+       ونطاقا الملفات (.zip/.mov) يُستعملان في تهريب البرمجيات */
+    const BAD_TLDS = ["tk", "ml", "ga", "cf", "gq", "zip", "mov", "onion"];
+    const tld = hostOnly.split(".").pop();
+    if (BAD_TLDS.indexOf(tld) !== -1) {
+      return { ok: false, reason: "نطاق مشبوه الانتهاء — مرتبط بالاحتيال أو التحميل غير الآمن" };
+    }
+
+    /* عمق مفرط في النطاقات الفرعية — نمط شائع في روابط التصيد */
+    if (hostOnly.split(".").length > 6) {
+      return { ok: false, reason: "بنية نطاق مفرطة العمق — علامة خطرة" };
+    }
+
     for (let i = 0; i < SHORTENERS.length; i++) {
       if (hostOnly === SHORTENERS[i] || hostOnly.endsWith("." + SHORTENERS[i])) {
         return { ok: false, reason: "روابط مختصرة غير موثوقة — استخدم الرابط الكامل" };
@@ -160,8 +183,129 @@
       }
     }
 
+    /* عبارات احتيال شائعة (تصيّد، محافظ وهمية، جوائز، حساب معلّق) */
+    const BAD_TOKENS = [
+      "free-money", "claim-airdrop", "verify-wallet", "account-suspended",
+      "login-verify", "secure-update", "prize-winner", "password-reset",
+      "bank-verification", "wallet-connect", "double-your"
+    ];
+    for (let i = 0; i < BAD_TOKENS.length; i++) {
+      if (lower.indexOf(BAD_TOKENS[i]) !== -1) {
+        return { ok: false, reason: "الرابط يحوي عبارة احتيال شائعة — مرفوض" };
+      }
+    }
+
     if (/\s/.test(url)) return { ok: false, reason: "الرابط يحتوي مسافات" };
     return { ok: true, reason: "سليم" };
+  }
+
+  /* ---------- الفحص الحيّ: هل الموقع يعمل فعلاً الآن؟ ---------- */
+  /* نسأل الشبكة بطلب محدود المدى (no-cors) ومهلة قصيرة:
+     استجابة الخادم = موقع حيّ.
+     فشل الطلب = نطاق ميت أو محجوب → نرفض الإضافة ونحذف أي نسخة محفوظة. */
+  function probeUrl(url, ms) {
+    const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timer = ctrl
+      ? setTimeout(() => { try { ctrl.abort(); } catch (e) {} }, ms || APP_CONFIG.limits.probeTimeout)
+      : null;
+    return fetch(url, {
+      method: "GET",
+      mode: "no-cors",
+      cache: "no-store",
+      redirect: "follow",
+      signal: ctrl ? ctrl.signal : undefined
+    }).then(
+      () => { if (timer) clearTimeout(timer); return { ok: true }; },
+      (e) => {
+        if (timer) clearTimeout(timer);
+        return {
+          ok: false,
+          reason: e && e.name === "AbortError"
+            ? "الموقع لا يستجيب خلال المهلة — رابط معطّل"
+            : "تعذّر الوصول للموقع — نطاق غير موجود أو محجوب"
+        };
+      }
+    );
+  }
+
+  /* ---------- مواقع الزائر المضافة ذاتياً (بدون مراجعة) ---------- */
+  function getUserLinks() {
+    const list = store.get(APP_CONFIG.cache.userLinksKey, []);
+    return Array.isArray(list) ? list : [];
+  }
+  function setUserLinks(list) {
+    store.set(APP_CONFIG.cache.userLinksKey, list.slice(-APP_CONFIG.limits.maxUserLinks));
+  }
+
+  /* حذف رابط من كل مخازن الإضافة — تنفَّذ دائماً عند الحكم بأن
+     الرابط ضار أو ميت: «لا تُضاف إن كان سيئاً، وإن كان محفوظاً فتحذف» */
+  function purgeLink(url) {
+    const norm = (u) => {
+      try { return new URL(String(u)).href.replace(/\/+$/, ""); }
+      catch (e) { return String(u).trim(); }
+    };
+    const target = norm(url);
+
+    const before = getUserLinks();
+    const after = before.filter((l) => norm(l.url) !== target);
+    const removedUser = after.length !== before.length;
+    if (removedUser) setUserLinks(after);
+
+    const subs = store.get(APP_CONFIG.cache.submissionsKey, []);
+    const arr = Array.isArray(subs) ? subs : [];
+    const arrAfter = arr.filter((s) => norm(s.url) !== target);
+    const removedSub = arrAfter.length !== arr.length;
+    if (removedSub) store.set(APP_CONFIG.cache.submissionsKey, arrAfter);
+
+    return removedUser || removedSub;
+  }
+
+  /* إعادة فحص كل المواقع المضافة عند كل زيارة:
+     إن لم تعد تجتاز قواعد الأمان — تُحذف فوراً مع تنبيه.
+     (مثال: نطاق أُضيف وهو آمن ثم تحوّل لـ punycode منتحل) */
+  function pruneUserLinks(silent) {
+    const list = getUserLinks();
+    if (!list.length) return 0;
+    let removed = 0;
+    const kept = list.filter((l) => {
+      if (checkUrlSafety(l.url).ok) return true;
+      removed++;
+      return false;
+    });
+    if (removed) {
+      setUserLinks(kept);
+      if (!silent) {
+        toast("حُذف " + removed + " موقعاً من قائمتك — لم يعد آمناً", "warn");
+        render();
+        updateHeaderStats();
+        persistCache();
+      }
+    }
+    return removed;
+  }
+
+  /* فحص حيّ دوري (مرة كل ٢٤ ساعة): أي موقع مضاف ذاتياً
+     لم يعد يستجيب — يُحذف تلقائياً فتبقى القائمة حيّة لا قديمة */
+  function backgroundLivenessCheck() {
+    const KEY = APP_CONFIG.cache.userLinksCheckedKey;
+    let last = 0;
+    try { last = +(localStorage.getItem(KEY) || 0); } catch (e) { return; }
+    if (Date.now() - last < 24 * 3600 * 1000) return;
+    try { localStorage.setItem(KEY, String(Date.now())); } catch (e) {}
+
+    const list = getUserLinks().slice(0, 10); /* حد أقصى 10 فحوصات لكل زيارة */
+    list.forEach((l) => {
+      probeUrl(l.url, 4000).then((r) => {
+        if (r.ok) return;
+        if (purgeLink(l.url)) {
+          loadData();
+          render();
+          updateHeaderStats();
+          persistCache();
+          toast("حُذف موقع «" + (l.title || host(l.url)) + "» — لم يعد يعمل", "warn");
+        }
+      });
+    });
   }
 
   /* ---------- تحميل البيانات ---------- */
@@ -196,7 +340,8 @@
     }
 
     // دمج الروابط القادمة من Firestore (تحديث يدوي من لوحة التحكم)
-    state.links = state.links.concat(state.remoteLinks);
+    // ثم مواقع الزائر المضافة ذاتياً بعد الفحص الآلي
+    state.links = state.links.concat(state.remoteLinks).concat(getUserLinks());
 
     // إزالة التكرار حسب الرابط
     const seen = {};
@@ -779,7 +924,7 @@
     return (
       '<section class="panel" id="submit">' +
         '<h2 class="panel-title">➕ أضف موقعك</h2>' +
-        "<p>بعد إرسال الموقع يقوم المشرف بفحصه يدوياً. الموقع الآمن فقط يُضاف للصفحة.</p>" +
+        "<p>فحص آلي فوري وبدون مراجعة: إن كان الرابط سليماً وأمناً ويعمل فعلاً يُضاف إلى قائمتك مباشرة، وإن كان ضاراً أو معطوباً يُرفض ويُحذف.</p>" +
         '<div class="form-row two" style="margin-top:1rem">' +
           '<div><label class="field-label" for="sTitle">اسم الموقع</label>' +
           '<input class="input" id="sTitle" maxlength="120" placeholder="مثال: منصتي التعليمية" /></div>' +
@@ -792,10 +937,11 @@
         "</select></div>" +
         '<div style="margin-top:.75rem"><label class="field-label" for="sDesc">وصف مختصر</label>' +
         '<textarea class="textarea" id="sDesc" maxlength="400" placeholder="اشرح ماذا يقدّم الموقع في سطرين"></textarea></div>' +
-        '<div style="margin-top:1rem"><button type="button" class="btn btn-primary btn-block" id="sSubmit">إرسال للمراجعة</button></div>' +
+        '<div style="margin-top:1rem"><button type="button" class="btn btn-primary btn-block" id="sSubmit">افحص وأضف الموقع</button></div>' +
         '<div id="sMsg" style="margin-top:.75rem"></div>' +
-        '<div class="security-note">🛡️ فحصنا الآلي يرفض: الروابط بدون https، ملفات التنفيذ، مختصرات الروابط، وعناوين IP. ' +
-          "ثم يراجعه المشرف يدوياً قبل النشر.</div>" +
+        '<div class="security-note">🛡️ يرفض الفحص الآلي: روابط بدون https، ملفات تنفيذية، مختصرات، ' +
+          "عناوين IP، نطاقات منتحلة أو مشبوهة، وعبارات احتيال — ثم يفحص حياً أن الموقع يعمل فعلاً قبل الإضافة. " +
+          "المواقع المضافة تُعاد فحصها في كل زيارة؛ إن صارت غير آمنة أو ميتة تُحذف تلقائياً.</div>" +
       "</section>"
     );
   }
@@ -1003,9 +1149,12 @@
       return;
     }
 
+    /* 1) الفحص الآلي لقواعد الأمان — إن فشل: رفض + حذف أي نسخة محفوظة */
     const check = checkUrlSafety(url);
     if (!check.ok) {
-      msg.innerHTML = '<div class="security-note danger">⛔ ' + esc(check.reason) + "</div>";
+      const purged1 = purgeLink(url);
+      msg.innerHTML = '<div class="security-note danger">⛔ ' + esc(check.reason) +
+        (purged1 ? " — وحُذفت نسخة محفوظة سابقاً إن وُجدت." : " — لم يُضف.") + "</div>";
       return;
     }
 
@@ -1033,47 +1182,78 @@
       return;
     }
 
-    const payload = {
-      title: title.slice(0, L.maxTitleLength),
-      url: url.slice(0, L.maxUrlLength),
-      desc: desc.slice(0, L.maxDescLength),
-      cats: [cat],
-      lang: /[؀-ۿ]/.test(title + desc) ? "ar" : "en",
-      tier: "free",
-      votes: 0,
-      safe: true,
-      status: "pending",
-      at: Date.now()
-    };
+    /* 2) الحد اليومي لكل مستخدم — يمنع الإغراق والتكرار الجماعي */
+    const dayMs = 24 * 3600 * 1000;
+    const isToday = (ts) => Date.now() - (ts || 0) < dayMs;
+    const todayCount =
+      getUserLinks().filter((l) => isToday(l.addedAt)).length +
+      (store.get(APP_CONFIG.cache.submissionsKey, []) || []).filter((s) => isToday(s.at)).length;
+    if (todayCount >= L.maxSubmissionsPerUser) {
+      msg.innerHTML = '<div class="security-note danger">⚠️ بلغت الحد اليومي (' +
+        L.maxSubmissionsPerUser + " مواقع في 24 ساعة) — حاول غداً.</div>";
+      return;
+    }
 
+    /* 3) الفحص الحيّ: هل الموقع يعمل فعلاً الآن؟ */
     if (btn) {
       btn.disabled = true;
-      btn.innerHTML = '<span class="spinner"></span> جاري الإرسال...';
+      btn.innerHTML = '<span class="spinner"></span> جاري الفحص الحي...';
     }
+    msg.innerHTML = '<div class="security-note">🔎 نفحص أن الموقع يعمل فعلاً… لحظات.</div>';
 
-    const done = (remoteOk) => {
-      const localList = store.get(APP_CONFIG.cache.submissionsKey, []);
-      localList.push(payload);
-      store.set(APP_CONFIG.cache.submissionsKey, localList.slice(-50));
-
+    probeUrl(url).then((alive) => {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = "إرسال للمراجعة";
+        btn.textContent = "افحص وأضف الموقع";
       }
-      msg.innerHTML = remoteOk
-        ? '<div class="security-note">✅ تم الإرسال بنجاح. سيراجعه المشرف ويظهر الموقع بعد الموافقة.</div>'
-        : '<div class="security-note">✅ تم الحفظ محلياً في انتظار المزامنة. يعمل الموقع حتى بدون إنترنت.</div>';
 
-      titleEl.value = "";
-      urlEl.value = "";
-      descEl.value = "";
-    };
+      if (!alive.ok) {
+        const purged2 = purgeLink(url);
+        msg.innerHTML = '<div class="security-note danger">⛔ ' + esc(alive.reason) +
+          (purged2 ? " — وحُذفت نسخة محفوظة سابقاً إن وُجدت." : " — لم يُضف.") + "</div>";
+        return;
+      }
 
-    if (Data && Data.saveSubmission) {
-      Data.saveSubmission(payload).then(done).catch(() => done(false));
-    } else {
-      done(false);
-    }
+      /* 4) كل الفحوصات نجحت — إضافة فورية بلا مراجعة */
+      const payload = {
+        title: title.slice(0, L.maxTitleLength),
+        url: url.slice(0, L.maxUrlLength),
+        desc: desc.slice(0, L.maxDescLength),
+        cats: [cat],
+        lang: /[؀-ۿ]/.test(title + desc) ? "ar" : "en",
+        tier: "free",
+        votes: 0,
+        safe: true,
+        isNew: true,
+        addedAt: Date.now(),
+        status: "approved",
+        autoChecked: true
+      };
+
+      setUserLinks(getUserLinks().concat([payload]));
+
+      /* مشاركة مع النشر العام إن توفر Firebase — لا تؤخر الإضافة الفورية */
+      if (Data && Data.saveSubmission) {
+        Data.saveSubmission(payload).catch(function () {});
+      }
+
+      loadData();
+      render();
+      updateHeaderStats();
+      persistCache();
+
+      const m2 = $("#sMsg");
+      if (m2) {
+        m2.innerHTML =
+          '<div class="security-note ok">✅ نجح الفحص الكامل (صيغة سليمة · https · الموقع يعمل فعلاً · لا علامات خطر): ' +
+          "أُضيف الموقع إلى قائمتك فوراً بلا مراجعة.</div>";
+      }
+      const t2 = $("#sTitle"), u2 = $("#sUrl"), d2 = $("#sDesc");
+      if (t2) t2.value = "";
+      if (u2) u2.value = "";
+      if (d2) d2.value = "";
+      toast("أُضيف «" + payload.title + "» إلى قائمتك", "ok");
+    });
   }
 
   /* ==========================================================
@@ -1436,6 +1616,9 @@
   function boot() {
     loadData();
     guardDataIntegrity();
+    /* إعادة فحص المواقع المضافة ذاتياً: أي رابط لم يعد آمناً يُحذف
+       فوراً قبل أول عرض — الصمت هنا لأن render() يأتي بعد قليل */
+    pruneUserLinks(true);
     filterFromHash();
     renderNav();
     renderJumpSelect();
@@ -1447,6 +1630,9 @@
     renderAuth();
     updateHeaderStats();
     persistCache();
+
+    /* فحص حيّ دوري في الخلفية: مواقع المضافة التي لم تعد تستجيب تُحذف */
+    backgroundLivenessCheck();
 
     /* إعادة الفتح عند تغيير قسم عبر رابط مباشر */
     window.addEventListener("hashchange", function () {

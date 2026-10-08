@@ -50,6 +50,8 @@ const APP_CONFIG = {
     maxTitleLength: 120,
     maxDescLength: 400,
     maxUrlLength: 300,
+    maxUserLinks: 100,            // حد مواقع الزائر المضافة ذاتياً (حماية من الازدحام)
+    probeTimeout: 6000,           // مهلة الفحص الحي للموقع (مللي ثانية)
     perPage: 24                   // عدد البطاقات في الصفحة الواحدة
   },
 
@@ -61,7 +63,7 @@ const APP_CONFIG = {
        تلقائياً — بما فيها قائمة الروابط المخزّنة في المتصفح.
        يُرفع عبر: node tools/sync-version.js --bump
        ملاحظة: هذا الحقل يُقرأ عند المقارنة فقط. */
-    version: "1.4.19",
+    version: "1.4.20",
     /* عدد الروابط في data.js. يحرسه guardDataIntegrity في app.js:
        إن استُلم عدد مختلف، يُقاس الملف من الشبكة ويُصحَّح الكاش.
        يُحدَّث آلياً عبر: node tools/sync-version.js --bump */
@@ -69,6 +71,8 @@ const APP_CONFIG = {
     linksKey: "jr_links_cache",
     usersKey: "jr_users_local",
     submissionsKey: "jr_submissions_local",
+    userLinksKey: "jr_user_links",
+    userLinksCheckedKey: "jr_user_links_checked",
     logKey: "jr_download_log",
     searchKey: "jr_search_history",
     ttlHours: 24                  // مدة صلاحية الكاش

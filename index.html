@@ -3,14 +3,20 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<!-- بروتوكول الأمان: سياسة أمان محتوى صارمة — تمنع حقن JavaScript
+     والأوامر الخبيثة والتحميل من مصادر غير موثوقة. تُنسّق مع
+     netlify.toml و vercel.json حتى يتطابق الحماية عبر كل المنصات. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https:; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self'; object-src 'none'" />
+<meta name="referrer" content="strict-origin-when-cross-origin" />
+<meta name="format-detection" content="telephone=no" />
 <title>جامع الروابط — كل المواقع المفيدة في مكان واحد</title>
-<meta name="description" content="جامع الروابط: 525 موقعاً مفيداً في 18 قسماً — كورسات بشهادات معتمدة، توظيف موثوق، ذكاء اصطناعي، أدوات مجانية، عمل حر، كتب، وألعاب آمنة. مجاني 100%." />
+<meta name="description" content="جامع الروابط: أكثر من 2000 موقعاً مفيداً في 25 قسماً — كورسات بشهادات معتمدة، توظيف موثوق، ذكاء اصطناعي، أدوات مجانية، عمل حر، كتب، وألعاب آمنة. مجاني 100%." />
 <meta name="keywords" content="كورسات مجانية, شهادات معتمدة, مواقع توظيف, ذكاء اصطناعي, عمل حر, كتب مجانية, أدوات مجانية, تسويق بالعمولة" />
 <meta name="author" content="جامع الروابط" />
 <meta name="theme-color" content="#0a192f" />
 <meta property="og:type" content="website" />
 <meta property="og:title" content="جامع الروابط — كل المواقع المفيدة في مكان واحد" />
-<meta property="og:description" content="أكثر من 525 موقعاً موثوقاً في 18 قسماً. كورسات بشهادات، توظيف، ذكاء اصطناعي، أدوات، عمل حر، كتب، وألعاب آمنة. مجاني بالكامل وبدون إعلانات." />
+<meta property="og:description" content="أكثر من 2000 موقعاً موثوقاً في 25 قسماً. كورسات بشهادات، توظيف، ذكاء اصطناعي، أدوات، عمل حر، كتب، وألعاب آمنة. مجاني بالكامل وبدون إعلانات." />
 <meta property="og:locale" content="ar_AR" />
 <meta name="twitter:card" content="summary_large_image" />
 <link rel="canonical" href="./" />
@@ -19,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;500;700;900&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="assets/css/style.css?v=1.4.19" />
+<link rel="stylesheet" href="assets/css/style.css?v=1.4.20" />
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js" defer></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js" defer></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js" defer></script>
@@ -33,12 +39,12 @@
     <h1>جامع الروابط</h1>
   </div>
   <p class="header-tagline">
-    أكثر من ١٢٠ موقعاً موثوقاً في ١٨ قسماً — كورسات بشهادات، توظيف، ذكاء اصطناعي،
+    أكثر من ٢٠٠٠ موقعاً موثوقاً في ٢٥ قسماً — كورسات بشهادات، توظيف، ذكاء اصطناعي،
     أدوات، تسويق بالعمولة، عمل حر، كتب، وألعاب وبرامج آمنة. عربي وإنجليزي، مجاني ومدفوع.
   </p>
   <div class="header-stats">
-    <div><b id="statSites">525+</b> موقع موثوق</div>
-    <div><b id="statSections">18</b> قسماً منظماً</div>
+    <div><b id="statSites">2000+</b> موقع موثوق</div>
+    <div><b id="statSections">25</b> قسماً منظماً</div>
     <div><b>100%</b> مجاني</div>
   </div>
 </header>
@@ -101,70 +107,12 @@
   </div>
 </noscript>
 
-<script src="assets/js/config.js?v=1.4.19" defer></script>
-<script src="assets/js/data.js?v=1.4.19" defer></script>
-<script src="assets/js/data-layer.js?v=1.4.19" defer></script>
-<script src="assets/js/app.js?v=1.4.19" defer></script>
-<script>
-/* ==========================================================
-   إصلاح ذاتي للكاش — يمنع تجمّد الهاتف على نسخة قديمة
-
-   المشكلة الحقيقية:
-     المتصفح لا يفحص عامل الخدمة إلا مرة كل ٢٤ ساعة كحد أقصى.
-     فإذا ثبّت الهاتف نسخة قديمة، قد تبقى عالقة عليها أيام بلا أي سبب ظاهر.
-     فيظهر للمستخدم «الموقع توقف» وهو يعمل تماماً.
-
-   الحل:
-     نطبع رقم الإصدار على كل تحميل. إن اختلف عن المحفوظ، فالمتصفح
-     ينسخ الكاش ويلغي عامل الخدمة ويعيد التحميل مرة واحدة فقط.
-     المتغيّر في sessionStorage يمنع أي حلقة إعادة تحميل.
-   ========================================================== */
-(function () {
-  var V = "1.4.19";
-  var KEY = "jr_ver";
-  var GUARD = "jr_reset";
-  try {
-    var seen = null;
-    try { seen = localStorage.getItem(KEY); } catch (e) {}
-
-    /* الإصدار مطابق أو هذه أول زيارة — لا حاجة لأي إجراء */
-    if (seen === null || seen === V) {
-      if (seen === null) { try { localStorage.setItem(KEY, V); } catch (e) {} }
-      return;
-    }
-
-    /* العلامة تحمل رقم الإصدار لا مجرد «١».
-       لو كانت تحمل رقماً قديماً فلا تحجب الإصلاح الحالي —
-       لهذا نتحقق من التطابق لا من وجودها فقط. */
-    if (sessionStorage.getItem(GUARD) === V) return;
-
-    /* نضع العلامة قبل العمل لا بعده: إن ألغى المستخدم التحديث
-       (أغلق الصفحة) تبقى العلامة، فيُعاد الإصلاح في الزيارة التالية.
-       وحملها رقم الإصدار يمنعها من تعطيل نسخة لاحقة. */
-    try { sessionStorage.setItem(GUARD, V); } catch (e) {}
-
-    var clean = function () {
-      try { localStorage.setItem(KEY, V); } catch (e) {}
-      try { sessionStorage.removeItem(GUARD); } catch (e) {}
-      location.reload();
-    };
-
-    if (navigator.serviceWorker) {
-      navigator.serviceWorker.getRegistrations().then(function (rs) {
-        return Promise.all(rs.map(function (r) { return r.unregister(); }));
-      }).catch(function () {});
-    }
-
-    if (window.caches) {
-      caches.keys().then(function (ks) {
-        return Promise.all(ks.map(function (k) { return caches.delete(k); }));
-      }).then(clean, clean);
-    } else {
-      clean();
-    }
-  } catch (e) { /* الوضع الخاص أو القيود — الموقع يعمل بدون هذا */
-  }
-})();
-</script>
+<script src="assets/js/config.js?v=1.4.20" defer></script>
+<script src="assets/js/data.js?v=1.4.20" defer></script>
+<script src="assets/js/data-layer.js?v=1.4.20" defer></script>
+<script src="assets/js/app.js?v=1.4.20" defer></script>
+<!-- الإصلاح الذاتي للكاش — ملف خارجي بدل السكربت المضمّن
+     حتى تبقى سياسة الأمان (CSP) صارمة بلا 'unsafe-inline' -->
+<script src="assets/js/selfheal.js?v=1.4.20"></script>
 </body>
 </html>
