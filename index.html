@@ -25,96 +25,97 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;500;700;900&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="assets/css/style.css?v=1.4.21"   integrity="sha384-ATANqpi5SZ2Sh44l7UipNSMbNbqrmYXFnt855Y9A1lyawC23iqBpXhNyakWyR3RV" />
+<!-- نظام اللغتين: يُحمَّل مبكراً لضبط اللغة والاتجاه قبل أول رسم -->
+<script src="assets/js/i18n.js?v=1.4.22" integrity="sha384-20GHWEWXmYaDNJeXVwXm7et1fMSUobXwJkdjoneQ1aHDRgNzc5Rhm7p42mm6AWJ1"></script>
+<link rel="stylesheet" href="assets/css/style.css?v=1.4.22"      integrity="sha384-Ao3DgNBleGazbrmENkmXNgOghCTSYTZF8xfbaa6kdCQ2HXgrSNjgFU3za2yZU+LX" />
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js" defer></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js" defer></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js" defer></script>
 </head>
 <body>
-<a class="skip-link" href="#mainContent">تخطَّ إلى المحتوى</a>
+<a class="skip-link" href="#mainContent" data-i18n="skipTo">تخطَّ إلى المحتوى</a>
 
 <header class="site-header">
   <div class="brand">
-    <span class="logo" aria-hidden="true">ر</span>
-    <h1>جامع الروابط</h1>
+    <span class="logo" aria-hidden="true" data-i18n="logoLetter">ر</span>
+    <h1 data-i18n="brand">جامع الروابط</h1>
   </div>
-  <p class="header-tagline">
-    أكثر من ٢٠٠٠ موقعاً موثوقاً في ٢٥ قسماً — كورسات بشهادات، توظيف، ذكاء اصطناعي،
-    أدوات، تسويق بالعمولة، عمل حر، كتب، وألعاب وبرامج آمنة. عربي وإنجليزي، مجاني ومدفوع.
-  </p>
+  <p class="header-tagline" data-i18n="tagline">أكثر من ٢٠٠٠ موقعاً موثوقاً في ٢٥ قسماً — كورسات بشهادات، توظيف، ذكاء اصطناعي، أدوات، تسويق بالعمولة، عمل حر، كتب، وألعاب وبرامج آمنة. عربي وإنجليزي، مجاني ومدفوع.</p>
   <div class="header-stats">
-    <div><b id="statSites">2000+</b> موقع موثوق</div>
-    <div><b id="statSections">25</b> قسماً منظماً</div>
-    <div><b>100%</b> مجاني</div>
+    <div><b id="statSites">2000+</b> <span data-i18n="statSitesLbl">موقع موثوق</span></div>
+    <div><b id="statSections">25</b> <span data-i18n="statSectionsLbl">قسماً منظماً</span></div>
+    <div><b>100%</b> <span data-i18n="statFreeLbl">مجاني</span></div>
   </div>
 </header>
 
-<nav class="main-nav" aria-label="التنقل الرئيسي">
+<nav class="main-nav" aria-label="التنقل الرئيسي" data-i18n-aria="navAria">
   <div class="search-bar">
-    <label class="sr-only" for="searchInput">ابحث في المواقع</label>
+    <label class="sr-only" for="searchInput" data-i18n="searchLabel">ابحث في المواقع</label>
     <span class="search-icon" aria-hidden="true">🔍</span>
-    <input id="searchInput" type="search" placeholder="ابحث: كورسات، ChatGPT، توظيف، تصميم…" autocomplete="off" />
-    <div class="search-results" id="searchResults" role="listbox" aria-label="نتائج البحث"></div>
+    <input id="searchInput" type="search" placeholder="ابحث: كورسات، ChatGPT، توظيف، تصميم…" data-i18n-ph="searchPh" autocomplete="off" />
+    <div class="search-results" id="searchResults" role="listbox" aria-label="نتائج البحث" data-i18n-aria="resultsAria"></div>
   </div>
   <div class="nav-actions">
-    <button class="icon-btn" id="themeBtn" aria-label="تبديل الوضع الليلي">☀️</button>
-    <button class="icon-btn" id="sectionsBtn" aria-label="اختر قسماً" aria-haspopup="dialog" aria-expanded="false">☰</button>
+    <button class="icon-btn lang-btn" id="langBtn" aria-label="تبديل اللغة إلى الإنجليزية" data-i18n-aria="langBtnAria"><span aria-hidden="true">🌐</span><span id="langLabel">EN</span></button>
+    <button class="icon-btn" id="themeBtn" aria-label="تبديل الوضع الليلي" data-i18n-aria="themeToggleAria">☀️</button>
+    <button class="icon-btn" id="sectionsBtn" aria-label="اختر قسماً" data-i18n-aria="sectionsAria" aria-haspopup="dialog" aria-expanded="false">☰</button>
   </div>
-  <div class="nav-links" id="navLinks" role="tablist" aria-label="أقسام الموقع"></div>
+  <div class="nav-links" id="navLinks" role="tablist" aria-label="أقسام الموقع" data-i18n-aria="navSectionsAria"></div>
 </nav>
 
 <!-- مُنتقي الأقسام -->
 <div class="picker-overlay" id="pickerOverlay" hidden></div>
 <div class="picker" id="picker" role="dialog" aria-modal="true" aria-labelledby="pickerTitle" hidden>
   <div class="picker-head">
-    <h2 id="pickerTitle">📂 اختر القسم الذي تريد</h2>
-    <button class="icon-btn" id="pickerClose" aria-label="إغلاق">✕</button>
+    <h2 id="pickerTitle" data-i18n="pickerTitle">📂 اختر القسم الذي تريد</h2>
+    <button class="icon-btn" id="pickerClose" aria-label="إغلاق" data-i18n-aria="pickerCloseAria">✕</button>
   </div>
-  <p class="picker-hint">اضغط على أي قسم لعرض كل مواقعه. العدد بجانب كل قسم يوضح كم موقعاً بداخله.</p>
+  <p class="picker-hint" data-i18n="pickerHint">اضغط على أي قسم لعرض كل مواقعه. العدد بجانب كل قسم يوضح كم موقعاً بداخله.</p>
   <div class="picker-grid" id="pickerGrid"></div>
   <div class="picker-foot">
-    <button class="btn btn-ghost" id="pickerAll">عرض كل المواقع</button>
+    <button class="btn btn-ghost" id="pickerAll" data-i18n="pickerAll">عرض كل المواقع</button>
   </div>
 </div>
 
 <div class="section" style="padding-bottom:0">
   <div class="toolbar">
     <div class="jump">
-      <label class="field-label" for="jumpSelect">اختر القسم</label>
+      <label class="field-label" for="jumpSelect" data-i18n="jumpLabel">اختر القسم</label>
       <select class="select" id="jumpSelect">
-        <option value="all">— كل الأقسام —</option>
+        <option value="all" data-i18n="jumpAllStatic">— كل الأقسام —</option>
       </select>
     </div>
     <div class="chips" id="filterChips"></div>
-    <label class="sr-only" for="sortSelect">ترتيب النتائج</label>
+    <label class="sr-only" for="sortSelect" data-i18n="sortAria">ترتيب النتائج</label>
     <select class="sort-select" id="sortSelect">
-      <option value="popular">الأكثر رواجاً</option>
-      <option value="new">الأحدث</option>
-      <option value="az">أبجدياً</option>
+      <option value="popular" data-i18n="sortPopular">الأكثر رواجاً</option>
+      <option value="new" data-i18n="sortNew">الأحدث</option>
+      <option value="az" data-i18n="sortAz">أبجدياً</option>
     </select>
   </div>
 </div>
 
 <main id="mainContent" tabindex="-1"></main>
 
-<section class="section auth-box" id="authBox" aria-label="تسجيل الدخول"></section>
+<section class="section auth-box" id="authBox" aria-label="تسجيل الدخول" data-i18n-aria="authAria"></section>
 
 <noscript>
   <div class="section">
     <div class="security-note danger">
-      هذا الموقع يحتاج تفعيل JavaScript في المتصفح لعرض الروابط والبحث.
+      هذا الموقع يحتاج تفعيل JavaScript في المتصفح لعرض الروابط والبحث.<br />
+      This site needs JavaScript enabled to show the links and search.
     </div>
   </div>
 </noscript>
 
-<script src="assets/js/config.js?v=1.4.21" defer integrity="sha384-vFSvtZRwn7FLpjkWdvmFUgU3+W6tyWAZJYoF9nS8TuNIxbMy69YZe/IwdIaNz+Un"></script>
-<script src="assets/js/data.js?v=1.4.21" defer integrity="sha384-jQTcJ/sEkV/sXHNZcqT/E2DnIw3LDy/GY/ODSvMKTmeo2iCV+WNz8N3JfJaeBX3B"></script>
-<script src="assets/js/data-layer.js?v=1.4.21" defer integrity="sha384-jFBOwawTbmipKQLC/a/dSgF3d2mnRWWtwc4M1eME+fgxe+V3qOoI5M3DsphoITxk"></script>
-<script src="assets/js/app.js?v=1.4.21" defer integrity="sha384-kpkUZ75OTOHMBcM+UGKpR5PBrdt/mzeJOj+u5pa/Ro8GkXDODFnW1MbfBRaZfTHy"></script>
+<script src="assets/js/config.js?v=1.4.22" defer integrity="sha384-+OluOxS1/Sdo8fhHTseFYkhORSZP66ycta40ZXGvoiYX7tUraC/O8wE9VrkWaAhC"></script>
+<script src="assets/js/data.js?v=1.4.22" defer integrity="sha384-jQTcJ/sEkV/sXHNZcqT/E2DnIw3LDy/GY/ODSvMKTmeo2iCV+WNz8N3JfJaeBX3B"></script>
+<script src="assets/js/data-layer.js?v=1.4.22" defer integrity="sha384-Ly3TdIahk/CFgwSxLULfyX17d0hpufh6ZOhgAssSPoqNh8qzpoYPvvQz0k+k6JVG"></script>
+<script src="assets/js/app.js?v=1.4.22" defer integrity="sha384-/aNEQLx7rC0Mq4ivos+gbKrfwUWYULAGEiotbrw5bClaEfS9CmPHgEx3CgQFyLwH"></script>
 <!-- الدرع الدائم: يمنع الحقن والتضمين والتعديل وقت التشغيل -->
-<script src="assets/js/security.js?v=1.4.21" defer integrity="sha384-2JWxqQNnGK+TWJ12nZV4/+nr2Rwdwbc9NlpRccod6APrRXe5JbkqKLczMg3KweW6"></script>
+<script src="assets/js/security.js?v=1.4.22" defer integrity="sha384-2JWxqQNnGK+TWJ12nZV4/+nr2Rwdwbc9NlpRccod6APrRXe5JbkqKLczMg3KweW6"></script>
 <!-- الإصلاح الذاتي للكاش — ملف خارجي بدل السكربت المضمّن
      حتى تبقى سياسة الأمان (CSP) صارمة بلا 'unsafe-inline' -->
-<script src="assets/js/selfheal.js?v=1.4.21" integrity="sha384-4wwABOgyQAuvMBul9Uqr+98wUDU3EYWS8/hY7ysqK+QituxHJE3Ff90Xd6FYOwjc"></script>
+<script src="assets/js/selfheal.js?v=1.4.22" integrity="sha384-+M2XF4GKZUhWxNcoD+DNhrCO6K+BUF0+x++zYeQrtgI85wzRYpPwuCezaPLvsddN"></script>
 </body>
 </html>

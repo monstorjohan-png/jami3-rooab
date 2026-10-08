@@ -7,6 +7,8 @@
   "use strict";
 
   const CFG = APP_CONFIG;
+  /* مُترجم اللغة — i18n.js مُحمَّل قبل هذه الطبقة في كل الصفحات */
+  const T = (k) => (window.JRT ? window.JRT(k) : k);
   const ready = { firebase: false, db: null, auth: null };
   const authListeners = [];
   const linksCacheKey = "jr_public_links";
@@ -148,7 +150,7 @@
     if (!ready.firebase) {
       const msg = msgEl
         ? msgEl.innerHTML =
-          '<div class="security-note danger">⚠️ Firebase غير مُهيّأ. أضف مفاتيح مشروعك في assets/js/config.js لتفعيل الدخول الحقيقي.</div>'
+          '<div class="security-note danger">' + T("fbNotConfigured") + "</div>"
         : null;
       return Promise.resolve(null);
     }
@@ -166,11 +168,11 @@
       })
       .catch((e) => {
         const code = (e && e.code) || "";
-        let text = "تعذّر تسجيل الدخول.";
-        if (code === "auth/popup-closed-by-user") text = "أغلقت نافذة الدخول. حاول مجدداً.";
-        else if (code === "auth/popup-blocked") text = "المتصفح منع النافذة. اسمح بالنوافذ المنبثقة.";
-        else if (code === "auth/network-request-failed") text = "فشل الاتصال بالإنترنت.";
-        else if (code === "auth/unauthorized-domain") text = "النطاق غير مصرّح به في إعدادات مشروع Firebase.";
+        let text = T("loginFail");
+        if (code === "auth/popup-closed-by-user") text = T("loginClosed");
+        else if (code === "auth/popup-blocked") text = T("loginBlocked");
+        else if (code === "auth/network-request-failed") text = T("loginNoNet");
+        else if (code === "auth/unauthorized-domain") text = T("loginDomain");
         if (msgEl) msgEl.innerHTML = '<div class="security-note danger">' + text + "</div>";
         return null;
       });

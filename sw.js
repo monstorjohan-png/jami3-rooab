@@ -2,7 +2,7 @@
    جامع الروابط - sw.js
    Service Worker: كاش + عمل بدون إنترنت
    ========================================== */
-const VERSION = "jr-v1.4.21";
+const VERSION = "jr-v1.4.22";
 const CORE = "core-" + VERSION;
 const RUNTIME = "runtime-" + VERSION;
 
@@ -15,13 +15,14 @@ const PRECACHE = [
   "./",
   "./index.html",
   "./manifest.json",
-  "./assets/css/style.css?v=1.4.21",
-  "./assets/js/config.js?v=1.4.21",
-  "./assets/js/data.js?v=1.4.21",
-  "./assets/js/data-layer.js?v=1.4.21",
-  "./assets/js/app.js?v=1.4.21",
-  "./assets/js/security.js?v=1.4.21",
-  "./assets/js/selfheal.js?v=1.4.21"
+  "./assets/css/style.css?v=1.4.22",
+  "./assets/js/i18n.js?v=1.4.22",
+  "./assets/js/config.js?v=1.4.22",
+  "./assets/js/data.js?v=1.4.22",
+  "./assets/js/data-layer.js?v=1.4.22",
+  "./assets/js/app.js?v=1.4.22",
+  "./assets/js/security.js?v=1.4.22",
+  "./assets/js/selfheal.js?v=1.4.22"
 ];
 
 self.addEventListener("install", (event) => {
