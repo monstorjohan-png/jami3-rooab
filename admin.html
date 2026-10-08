@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <!-- بروتوكول الأمان: نفس سياسة الصفحة الرئيسية — حماية صارمة ضد الحقن -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https:; frame-src https://accounts.google.com; base-uri 'self'; form-action 'self'; object-src 'none'" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https:; frame-src https://accounts.google.com; child-src 'self'; worker-src 'self'; manifest-src 'self'; media-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'" />
 <meta name="referrer" content="strict-origin-when-cross-origin" />
 <title>لوحة التحكم — جامع الروابط</title>
 <meta name="robots" content="noindex, nofollow" />
@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;500;700;900&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="assets/css/style.css" />
+<link rel="stylesheet" href="assets/css/style.css"   integrity="sha384-ATANqpi5SZ2Sh44l7UipNSMbNbqrmYXFnt855Y9A1lyawC23iqBpXhNyakWyR3RV" />
 <style>
   .admin-shell { max-width: 1180px; margin: 0 auto; padding: 1.5rem; }
   .admin-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
@@ -122,9 +122,10 @@
   </div>
 </div>
 
-<script src="assets/js/config.js"></script>
-<script src="assets/js/data.js"></script>
-<script src="assets/js/data-layer.js"></script>
-<script src="assets/js/admin.js"></script>
+<script src="assets/js/config.js" integrity="sha384-vFSvtZRwn7FLpjkWdvmFUgU3+W6tyWAZJYoF9nS8TuNIxbMy69YZe/IwdIaNz+Un"></script>
+<script src="assets/js/data.js" integrity="sha384-jQTcJ/sEkV/sXHNZcqT/E2DnIw3LDy/GY/ODSvMKTmeo2iCV+WNz8N3JfJaeBX3B"></script>
+<script src="assets/js/data-layer.js" integrity="sha384-jFBOwawTbmipKQLC/a/dSgF3d2mnRWWtwc4M1eME+fgxe+V3qOoI5M3DsphoITxk"></script>
+<script src="assets/js/admin.js" integrity="sha384-3by/qvB0hErcAjloZ2zSIitsZ2vnAyESUIA6Rgy2wMkFWoUMmL43KX10m5y5wSUx"></script>
+<script src="assets/js/security.js" integrity="sha384-2JWxqQNnGK+TWJ12nZV4/+nr2Rwdwbc9NlpRccod6APrRXe5JbkqKLczMg3KweW6"></script>
 </body>
 </html>

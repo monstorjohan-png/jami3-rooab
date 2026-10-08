@@ -1,0 +1,5 @@
+# security.txt — جامع الروابط (نسخة جذرية لأدوات تبحث في المسار القديم)
+Contact: mailto:jami3rooab@gmail.com
+Policy: https://monstorjohan-png.github.io/jami3-rooab/
+Expires: 2027-10-08T00:00:00.000Z
+Preferred-Languages: ar, en
